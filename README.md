@@ -23,3 +23,6 @@ Warme Champagner-, Braun-, Elfenbein- und Anthrazitwerte; typografische Wortmark
 
 ## v0.4 — Fünf Mitarbeiterinnen / einfache Tagesübersicht
 Fiktive Testprofile Daniela, Sofia, Melina, Vanessa, Jennifer mit fünf KI-generierten Platzhalterporträts (kompakter lokaler WebP-Bildstreifen für Avatare). Vorhandene Browserdaten werden ohne Löschen der Termine aktualisiert; persönliche Profiländerungen bleiben erhalten. Standardkalender: Mitarbeiterinnen filtern, freie Startzeiten antippen, Einträge bearbeiten, Zeit sperren. Woche und Zeitraster optional. Keine echte Personalinformation oder produktive Verbindung.
+
+## v0.5 — getrennte Oberflächen
+`index.html`: öffentliche Buchungsdemo im Avanti-Stil, keine Verwaltungsnavigation; Leistung (Dauer), Wunschstylistin, Monatskalender mit tatsächlich verfügbaren Tagen und freien Uhrzeiten. `studio.html`: interner Kalender im Fresha-inspirierten Spaltenlayout mit Arbeitszeiten, manuellen Terminen und Zeitsperren. Alte #studio/#team-Links leiten um. Smartphone zeigt eine Mitarbeiterin zur Zeit. Beide Ansichten teilen ausschließlich lokale Browserdaten; **keine Authentifizierung, keine geräteübergreifende Synchronisation, keine echte Online-Buchung**. Monatskalender und Buchungen verwenden dieselbe Verfügbarkeitsfunktion. Keine Änderungen an Supabase oder der bestehenden Salonwebsite.
