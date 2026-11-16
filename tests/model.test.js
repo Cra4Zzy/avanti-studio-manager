@@ -1,0 +1,17 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {initialState,book,cancel,slots,today,addDays,availableSlots} from '../src/model.js';
+const now=new Date('2026-11-16T08:00:00Z'),day='2026-11-17',s=initialState(),r={day,staffId:'s0',serviceId:'cut',start:540,name:'Test'},make=(state=s,req=r)=>book(state,req,now,()=> 'a');
+test('Berlin local day',()=>assert.equal(today(new Date('2026-11-16T23:30:00Z')),'2026-11-17'));
+test('year boundary',()=>assert.equal(addDays('2026-12-31',1),'2027-01-01'));
+test('working hours and breaks',()=>{const a=slots(s,{...r,now});assert.ok(a.length);assert.ok(a.every(t=>t.start>=540&&t.end<=1080&&(t.end<=780||t.start>=825)));});
+test('Sunday off',()=>assert.deepEqual(slots(s,{...r,day:'2026-11-22',now}),[]));
+test('qualified staff only',()=>{const x=initialState();x.staff[0].services=[];assert.deepEqual(slots(x,{...r,now}),[]);});
+test('overlaps rejected',()=>{const x=make();assert.throws(()=>make(x,{...r,start:555}));assert.doesNotThrow(()=>book(x,{...r,start:570},now,()=> 'b'));});
+test('manual and online same capacity',()=>assert.throws(()=>make(make(s,{...r,source:'manual'}))));
+test('cancel releases capacity',()=>assert.doesNotThrow(()=>make(cancel(make(),'a'))));
+test('move own appointment',()=>{const y=make(make(),{...r,id:'a',start:555});assert.equal(y.appointments.length,1);assert.equal(y.appointments[0].start,555);});
+test('absence blocks slots',()=>assert.ok(slots({...s,absences:[{staffId:'s0',day,start:540,end:600}]},{...r,now}).every(t=>t.start>=600)));
+test('past rejected',()=>assert.deepEqual(slots(s,{...r,day:'2026-11-15',now}),[]));
+test('long treatment cannot bridge break',()=>{const x=initialState();x.services[0].duration=90;assert.ok(slots(x,{...r,now}).every(t=>t.end<=780||t.start>=825));});
+test('adjacent intervals allowed',()=>assert.deepEqual(availableSlots({shifts:[{start:0,end:60}],blocks:[{start:30,end:60}],durationMinutes:30}),[{start:0,end:30}]));
