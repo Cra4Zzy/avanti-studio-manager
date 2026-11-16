@@ -79,7 +79,7 @@ body[data-screen=booking] .booking{grid-template-columns:minmax(0,1fr) 330px;gap
 @media(max-width:640px){header{min-height:0}.heading h1,.studio-intro h1{font-size:38px}.calendar-toolbar h2{font-size:21px}.stat strong{font-size:25px}.stat{min-height:96px}.agenda-entry{grid-template-columns:105px 1fr}.cal-scroll{padding-bottom:12px}body[data-screen=booking] .heading h1{font-size:42px}}
 
 /* v0.4 — compact daily agenda: staff-first, fewer controls, predictable touch targets. */
-.avatar.portrait{background-image:url("./assets/demo-team.webp");background-size:500% 100%;background-repeat:no-repeat;background-color:#dfcbb2}
+.avatar.portrait{background-image:url("./assets/demo-team.webp?v=2");background-size:500% 100%;background-repeat:no-repeat;background-color:#dfcbb2}
 .portrait-0{background-position:0% 50%}.portrait-1{background-position:25% 50%}.portrait-2{background-position:50% 50%}.portrait-3{background-position:75% 50%}.portrait-4{background-position:100% 50%}
 .people{grid-template-columns:repeat(auto-fit,minmax(104px,1fr))}
 .people .choice{padding:15px 7px;min-height:128px}.people .avatar{width:64px;height:64px;border:2px solid #d3b48c}.people .choice small{line-height:1.3}
