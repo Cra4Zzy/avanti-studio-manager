@@ -17,3 +17,6 @@ Nächste Phase: getrenntes Backend in EU-Region, Auth/RLS, Mandantentrennung, tr
 - Kalenderzeiten direkt antippen: Mitarbeiter, Datum und Uhrzeit automatisch übernommen. Schnellbuchung mit Name und 15–120 Minuten; optional Behandlung und individuelle Dauer. Bestehende Einträge bearbeiten, Zeiten sperren und freigeben. Storno/Sperren-Aufhebung mit kurzer lokaler Rückgängig-Option. Desktop Drag & Drop mit Bestätigung und Konfliktprüfung; mobile Tagesansicht pro Mitarbeiter.
 - Kontrastreiches Petrol/Creme/Kupfer-Design, getrennte Statusfarben, Tablet- und Smartphone-Ansichten. Vorläufiges CI, noch keine Kundenfreigabe.
 - Ausschließlich lokaler Pilot. Dienstübergreifende Backend-API muss insbesondere manuelle Termine ohne Leistung, Zeitblöcke und individuelle Dauer unterstützen; aktuelle DB-Migration erfordert noch Anpassungen vor Freigabe. Keine produktiven Daten verwenden.
+
+## v0.3 — Avanti-inspired CI
+Warme Champagner-, Braun-, Elfenbein- und Anthrazitwerte; typografische Wortmarke (kein kopiertes Originallogo), inspirierte Gestaltung statt exakter Übernahme der Original-CSS-Werte. Referenz: https://haarstudio-avanti.de/ und bisherige Avanti-Werbemittel. Funktionale Statusfarben bleiben eigenständig. Die Buchungslogik und der lokale Datenstand bleiben unverändert.
