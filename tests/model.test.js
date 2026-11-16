@@ -24,3 +24,5 @@ test('block can be moved and removed capacity released',()=>{const input={day,st
 test('manual appointment cannot cross pause',()=>assert.throws(()=>book(s,{...r,start:765,source:'manual',durationMinutes:30,serviceId:null},now)));
 test('moving appointment retains duration after service price or duration change',()=>{const x=make();const y={...x,services:x.services.map(v=>v.id==='cut'?{...v,duration:60}:v)};const z=book(y,{...r,id:'a',start:600},now);assert.equal(z.appointments[0].end,630);});
 test('reject impossible calendar date',()=>assert.equal(freeSlots(s,{...r,day:'2026-11-31',now}).length,0));
+
+test('whole-day block removes every free slot',()=>{const x=blockTime(s,{day,staffId:'s0',start:0,durationMinutes:1440},now,()=> 'day');assert.equal(freeSlots(x,{day,staffId:'s0',now}).length,0);assert.equal(x.absences[0].end,1440);});
