@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {initialState,book,cancel,slots,today,addDays,availableSlots,freeSlots,blockTime} from '../src/model.js';
+import {initialState,book,cancel,slots,today,addDays,availableSlots,freeSlots,blockTime,upgradeDemo} from '../src/model.js';
 const now=new Date('2026-11-16T08:00:00Z'),day='2026-11-17',s=initialState(),r={day,staffId:'s0',serviceId:'cut',start:540,name:'Test'},make=(state=s,req=r)=>book(state,req,now,()=> 'a');
 test('Berlin local day',()=>assert.equal(today(new Date('2026-11-16T23:30:00Z')),'2026-11-17'));
 test('year boundary',()=>assert.equal(addDays('2026-12-31',1),'2027-01-01'));
@@ -26,3 +26,6 @@ test('moving appointment retains duration after service price or duration change
 test('reject impossible calendar date',()=>assert.equal(freeSlots(s,{...r,day:'2026-11-31',now}).length,0));
 
 test('whole-day block removes every free slot',()=>{const x=blockTime(s,{day,staffId:'s0',start:0,durationMinutes:1440},now,()=> 'day');assert.equal(freeSlots(x,{day,staffId:'s0',now}).length,0);assert.equal(x.absences[0].end,1440);});
+
+test('five uniquely named fictional staff and portrait slots',()=>{const x=initialState();assert.equal(x.staff.length,5);assert.equal(new Set(x.staff.map(y=>y.name)).size,5);assert.deepEqual(x.staff.map(y=>y.demoPortrait),[0,1,2,3,4]);});
+test('old demo upgrades without losing appointments, custom names or photos',()=>{const x=make();x.staff=x.staff.slice(0,3);x.staff[0].name='Team A';x.staff[1].name='Eigener Name';x.staff[1].photo='data:image/png;base64,AAAA';const y=upgradeDemo(x);assert.equal(y.staff.length,5);assert.equal(y.staff[0].name,'Daniela');assert.equal(y.staff[1].name,'Eigener Name');assert.equal(y.staff[1].photo,x.staff[1].photo);assert.deepEqual(y.appointments,x.appointments);});

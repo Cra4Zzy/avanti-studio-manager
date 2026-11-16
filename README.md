@@ -20,3 +20,6 @@ Nächste Phase: getrenntes Backend in EU-Region, Auth/RLS, Mandantentrennung, tr
 
 ## v0.3 — Avanti-inspired CI
 Warme Champagner-, Braun-, Elfenbein- und Anthrazitwerte; typografische Wortmarke (kein kopiertes Originallogo), inspirierte Gestaltung statt exakter Übernahme der Original-CSS-Werte. Referenz: https://haarstudio-avanti.de/ und bisherige Avanti-Werbemittel. Funktionale Statusfarben bleiben eigenständig. Die Buchungslogik und der lokale Datenstand bleiben unverändert.
+
+## v0.4 — Fünf Mitarbeiterinnen / einfache Tagesübersicht
+Fiktive Testprofile Daniela, Sofia, Melina, Vanessa, Jennifer mit fünf KI-generierten Platzhalterporträts (kompakter lokaler WebP-Bildstreifen für Avatare). Vorhandene Browserdaten werden ohne Löschen der Termine aktualisiert; persönliche Profiländerungen bleiben erhalten. Standardkalender: Mitarbeiterinnen filtern, freie Startzeiten antippen, Einträge bearbeiten, Zeit sperren. Woche und Zeitraster optional. Keine echte Personalinformation oder produktive Verbindung.

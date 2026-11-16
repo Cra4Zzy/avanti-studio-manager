@@ -3,7 +3,7 @@ export const today=(now=new Date())=>new Intl.DateTimeFormat('sv-SE',{timeZone:'
 export function addDays(d,n){const x=new Date(d+'T00:00:00Z');x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10);}
 export const time=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
 export const parseTime=s=>{const [h,m]=String(s).split(':').map(Number);return h>=0&&h<24&&m>=0&&m<60?h*60+m:NaN;};
-export function initialState(){const services=[{id:'cut',name:'Herrenhaarschnitt',duration:30,price:19},{id:'dry',name:'Damen-Trockenhaarschnitt',duration:45,price:30},{id:'child',name:'Kinderhaarschnitt',duration:30,price:15},{id:'brow',name:'Augenbrauen zupfen',duration:15,price:6}];return {version:1,services,staff:['A','B','C'].map((x,i)=>({id:'s'+i,name:'Team '+x,specialty:'Schnitt & Styling',photo:'',days:i===1?[1,2,3,4,5]:[1,2,3,4,5,6],start:540+i*30,end:1080,breakStart:780,breakEnd:825,services:services.map(s=>s.id)})),appointments:[],absences:[]};}
+export function initialState(){const services=[{id:'cut',name:'Herrenhaarschnitt',duration:30,price:19},{id:'dry',name:'Damen-Trockenhaarschnitt',duration:45,price:30},{id:'child',name:'Kinderhaarschnitt',duration:30,price:15},{id:'brow',name:'Augenbrauen zupfen',duration:15,price:6}];return {version:1,services,staff:['Daniela','Sofia','Melina','Vanessa','Jennifer'].map((name,i)=>({id:'s'+i,name,specialty:['Salonleitung','Schnitt & Styling','Farbe & Styling','Schnitt & Pflege','Styling & Beauty'][i],photo:'',demoPortrait:i,days:i===1?[1,2,3,4,5]:[1,2,3,4,5,6],start:540+(i<3?i*30:0),end:1080,breakStart:780,breakEnd:825,services:services.map(s=>s.id)})),appointments:[],absences:[]};}
 export function availableSlots({shifts,blocks=[],durationMinutes,stepMinutes=15,notBefore=0,notAfter=1440}){
  if(!Number.isInteger(durationMinutes)||durationMinutes<=0||!Number.isInteger(stepMinutes)||stepMinutes<=0)throw Error('Ungültige Dauer');
  const out=[];for(const w of shifts){for(let start=w.start+Math.ceil(Math.max(0,notBefore-w.start)/stepMinutes)*stepMinutes;start+durationMinutes<=Math.min(w.end,notAfter);start+=stepMinutes){const end=start+durationMinutes;if(!blocks.some(b=>start<b.end&&b.start<end))out.push({start,end});}}
@@ -47,3 +47,12 @@ export function blockTime(state,input,now=new Date(),newId=()=>globalThis.crypto
  return {...state,absences:[...state.absences.filter(x=>x.id!==a.id),a]};
 }
 export function cancel(state,id){return {...state,appointments:state.appointments.map(a=>a.id===id?{...a,status:'cancelled'}:a)};}
+
+// Upgrade the old local demo without losing bookings, edits or uploaded photos.
+export function upgradeDemo(state){
+ const defaults=initialState(),legacy=['Team A','Team B','Team C'];
+ if(!state||state.version!==1||!Array.isArray(state.staff))return defaults;
+ const existing=state.staff.map(member=>{const d=defaults.staff.find(x=>x.id===member.id);if(!d)return member;return {...member,name:legacy.includes(member.name)&&member.name===legacy[Number(member.id.slice(1))]?d.name:member.name,specialty:legacy.includes(member.name)&&member.specialty==='Schnitt & Styling'?d.specialty:member.specialty,demoPortrait:d.demoPortrait};});
+ for(const d of defaults.staff)if(!existing.some(x=>x.id===d.id))existing.push({...d,services:state.services.map(v=>v.id)});
+ return {...state,staff:existing};
+}
