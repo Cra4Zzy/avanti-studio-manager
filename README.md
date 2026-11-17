@@ -26,3 +26,6 @@ Fiktive Testprofile Daniela, Sofia, Melina, Vanessa, Jennifer mit fünf KI-gener
 
 ## v0.5 — getrennte Oberflächen
 `index.html`: öffentliche Buchungsdemo im Avanti-Stil, keine Verwaltungsnavigation; Leistung (Dauer), Wunschstylistin, Monatskalender mit tatsächlich verfügbaren Tagen und freien Uhrzeiten. `studio.html`: interner Kalender im Fresha-inspirierten Spaltenlayout mit Arbeitszeiten, manuellen Terminen und Zeitsperren. Alte #studio/#team-Links leiten um. Smartphone zeigt eine Mitarbeiterin zur Zeit. Beide Ansichten teilen ausschließlich lokale Browserdaten; **keine Authentifizierung, keine geräteübergreifende Synchronisation, keine echte Online-Buchung**. Monatskalender und Buchungen verwenden dieselbe Verfügbarkeitsfunktion. Keine Änderungen an Supabase oder der bestehenden Salonwebsite.
+
+## v0.6 — Wochenübersicht (Entwicklungszweig)
+Tag/Woche umschalten, Wochenkennzahlen zum gewählten Teamfilter, direkte Bearbeitung von Terminen und Sperren, Datum antippen für die Tagesansicht. Mobile Wochenübersicht mit zwei bzw. einer Spalte. Ausschließlich lokale Testdaten; kein produktiver Betrieb, keine Installation oder Backend-Verbindung hinzugefügt.
