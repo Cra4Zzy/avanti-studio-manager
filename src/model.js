@@ -13,7 +13,7 @@ export function availableSlots({shifts,blocks=[],durationMinutes,stepMinutes=15,
 export function validDay(day){return typeof day==='string'&&/^\d{4}-\d\d-\d\d$/.test(day)&&Number.isFinite(Date.parse(day+'T00:00:00Z'))&&new Date(day+'T00:00:00Z').toISOString().slice(0,10)===day;}
 export function freeSlots(state,{day,staffId,durationMinutes=15,serviceId=null,excludeId=null,now=new Date()}){
  const s=state.staff.find(x=>x.id===staffId);
- if(!validDay(day)||day<today(now)||day>addDays(today(now),90)||!s||!s.days.includes(new Date(day+'T00:00:00Z').getUTCDay())||!Number.isInteger(durationMinutes)||durationMinutes<15||durationMinutes>480||durationMinutes%15!==0)return [];
+ if(!validDay(day)||day<today(now)||day>addDays(today(now),90)||!s||s.archived===true||!s.days.includes(new Date(day+'T00:00:00Z').getUTCDay())||!Number.isInteger(durationMinutes)||durationMinutes<15||durationMinutes>480||durationMinutes%15!==0)return [];
  if(serviceId&&(!state.services.some(v=>v.id===serviceId)||!s.services.includes(serviceId)))return [];
  const blocks=[...state.appointments.filter(a=>a.status==='confirmed'&&a.day===day&&a.staffId===staffId&&a.id!==excludeId),...state.absences.filter(a=>a.day===day&&a.staffId===staffId&&a.id!==excludeId)];
  if(s.breakEnd>s.breakStart)blocks.push({start:s.breakStart,end:s.breakEnd});
@@ -40,7 +40,7 @@ export function book(state,input,now=new Date(),newId=()=>globalThis.crypto.rand
 export function blockTime(state,input,now=new Date(),newId=()=>globalThis.crypto.randomUUID()){
  const {day,staffId}=input,start=Number(input.start),end=start+Number(input.durationMinutes);
  const old=input.id?state.absences.find(a=>a.id===input.id):null;if(input.id&&!old)throw Error('Sperre nicht gefunden.');
- if(!validDay(day)||day<today(now)||day>addDays(today(now),90)||!state.staff.some(x=>x.id===staffId)||!Number.isInteger(start)||!Number.isInteger(end)||start<0||end>1440||end<=start||end-start>1440)throw Error('Ungültiger Zeitraum.');
+ if(!validDay(day)||day<today(now)||day>addDays(today(now),90)||!state.staff.some(x=>x.id===staffId&&x.archived!==true)||!Number.isInteger(start)||!Number.isInteger(end)||start<0||end>1440||end<=start||end-start>1440)throw Error('Ungültiger Zeitraum.');
  const blocked=[...state.appointments.filter(a=>a.status==='confirmed'),...state.absences].some(a=>a.id!==old?.id&&a.day===day&&a.staffId===staffId&&start<a.end&&a.start<end);
  if(blocked)throw Error('Der Zeitraum überschneidet sich mit einem Termin oder einer Sperre.');
  const a={id:old?.id||newId(),day,staffId,start,end,reason:String(input.reason||'Nicht verfügbar').trim().slice(0,80)||'Nicht verfügbar'};
@@ -71,7 +71,7 @@ export function blockRange(state,{day,lastDay=day,staffId,start,end,reason,id=nu
 
 /* Only explicitly created quick slots may be released with a single click. */
 export function toggleQuickSlot(state,{day,staffId,start},now=new Date(),newId=()=>globalThis.crypto.randomUUID()){
- if(!Number.isInteger(start)||start%15||!validDay(day)||day<today(now)||day>addDays(today(now),90)||!state.staff.some(s=>s.id===staffId))throw Error('Dieser Zeitslot ist nicht verfügbar.');
+ if(!Number.isInteger(start)||start%15||!validDay(day)||day<today(now)||day>addDays(today(now),90)||!state.staff.some(s=>s.id===staffId&&s.archived!==true))throw Error('Dieser Zeitslot ist nicht verfügbar.');
  if(state.absences.some(a=>a.day===day&&a.staffId===staffId&&a.wholeDay===true))throw Error('Bitte zuerst die Tagessperre aufheben.');
  const own=state.absences.find(a=>a.quickSlot===true&&a.day===day&&a.staffId===staffId&&a.start===start&&a.end===start+15);
  if(own)return {...state,absences:state.absences.filter(a=>a.id!==own.id)};
@@ -109,8 +109,26 @@ export function nextWorkday(state,staffId,now=new Date()){
  return d;
 }
 export function toggleWholeDay(state,{day,staffId},now=new Date(),newId=()=>globalThis.crypto.randomUUID()){
- if(!validDay(day)||day<today(now)||day>addDays(today(now),90)||!state.staff.some(s=>s.id===staffId))throw Error('Bitte einen gültigen Tag auswählen.');
+ if(!validDay(day)||day<today(now)||day>addDays(today(now),90)||!state.staff.some(s=>s.id===staffId&&s.archived!==true))throw Error('Bitte einen gültigen Tag auswählen.');
  const own=state.absences.find(a=>a.day===day&&a.staffId===staffId&&a.wholeDay===true);
  if(own)return {...state,absences:state.absences.filter(a=>a.id!==own.id)};
  return {...state,absences:[...state.absences,{id:newId(),day,staffId,start:0,end:1440,reason:'Tag gesperrt',wholeDay:true}]};
+}
+
+/* Staff administration: keep historical references and prevent removing future appointment capacity silently. */
+export const activeStaff=state=>state.staff.filter(s=>s.archived!==true);
+export function addStaff(state,input,newId=()=>globalThis.crypto.randomUUID()){
+ const name=String(input.name||'').trim(),specialty=String(input.specialty||'').trim(),id=newId();
+ if(!name||name.length>40||specialty.length>80||state.staff.some(s=>s.id===id))throw Error('Ungültiges Mitarbeiterprofil.');
+ const member={id,name,specialty,photo:input.photo||'',days:[1,2,3,4,5,6],start:540,end:1080,breakStart:780,breakEnd:825,services:state.services.map(v=>v.id),archived:false};
+ return {...state,staff:[...state.staff,member]};
+}
+export function setStaffArchived(state,id,archived,now=new Date()){
+ const member=state.staff.find(s=>s.id===id);if(!member)throw Error('Profil nicht gefunden.');
+ if(archived){
+  const date=today(now),minute=berlinMinute(now),upcoming=a=>a.staffId===id&&(a.day>date||a.day===date&&a.end>minute);
+  if(state.appointments.some(a=>a.status==='confirmed'&&upcoming(a)))throw Error('Bitte zuerst die noch offenen Kundentermine verschieben oder stornieren.');
+  if(state.absences.some(a=>a.quickSlot===true&&upcoming(a)))throw Error('Bitte zuerst die offenen Telefon-/Salonslots im Kalender klären und freigeben.');
+ }
+ return {...state,staff:state.staff.map(s=>s.id===id?{...s,archived:Boolean(archived)}:s)};
 }

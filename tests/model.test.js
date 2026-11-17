@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {initialState,book,cancel,slots,today,addDays,availableSlots,freeSlots,blockTime,upgradeDemo,blockRange,toggleQuickSlot,quickDay,nextWorkday,toggleWholeDay} from '../src/model.js';
+import {initialState,book,cancel,slots,today,addDays,availableSlots,freeSlots,blockTime,upgradeDemo,blockRange,toggleQuickSlot,quickDay,nextWorkday,toggleWholeDay,activeStaff,addStaff,setStaffArchived} from '../src/model.js';
 const now=new Date('2026-11-16T08:00:00Z'),day='2026-11-17',s=initialState(),r={day,staffId:'s0',serviceId:'cut',start:540,name:'Test'},make=(state=s,req=r)=>book(state,req,now,()=> 'a');
 test('Berlin local day',()=>assert.equal(today(new Date('2026-11-16T23:30:00Z')),'2026-11-17'));
 test('year boundary',()=>assert.equal(addDays('2026-12-31',1),'2027-01-01'));
@@ -42,3 +42,9 @@ test('quick slots reject past dates, off days and nonquarter starts',()=>{assert
 test('day lock preserves appointments and previous quick slots, and releases only itself',()=>{const x=toggleQuickSlot(make(),{day,staffId:'s0',start:600},now,()=> 'quick');const y=toggleWholeDay(x,{day,staffId:'s0'},now,()=> 'whole');assert.equal(y.appointments.length,1);assert.equal(freeSlots(y,{day,staffId:'s0',now}).length,0);assert.equal(quickDay(y,{day,staffId:'s0'},now).find(t=>t.start===540).status,'booked');assert.throws(()=>toggleQuickSlot(y,{day,staffId:'s0',start:600},now));const z=toggleWholeDay(y,{day,staffId:'s0'},now);assert.deepEqual(z,x);});
 test('next working day after closing and on Sunday',()=>{assert.equal(nextWorkday(s,'s0',new Date('2026-11-17T18:32:00Z')),'2026-11-18');assert.equal(nextWorkday(s,'s0',new Date('2026-11-22T10:00:00Z')),'2026-11-23');});
 test('elapsed work slots are labeled past',()=>{assert.equal(quickDay(s,{day,staffId:'s0'},new Date('2026-11-17T18:32:00Z')).find(t=>t.start===540).status,'past');});
+
+test('new staff receive all services and survive demo upgrades',()=>{const x=addStaff(initialState(),{name:'Alex',specialty:'Schnitt'},()=> 'new-staff');const y=upgradeDemo(x);assert.equal(activeStaff(y).length,6);assert.deepEqual(y.staff.at(-1).services,y.services.map(v=>v.id));assert.ok(slots(y,{...r,staffId:'new-staff',now}).length);});
+test('archived staff disappear from active team and cannot receive bookings; restoration works',()=>{const x=setStaffArchived(initialState(),'s0',true,now),y=upgradeDemo(x);assert.equal(activeStaff(y).length,4);assert.deepEqual(slots(y,{...r,now}),[]);assert.throws(()=>make(y));assert.ok(slots(setStaffArchived(y,'s0',false,now),{...r,now}).length);});
+test('archiving preserves history and rejects upcoming confirmed bookings',()=>{const x=make();assert.throws(()=>setStaffArchived(x,'s0',true,now));const y=setStaffArchived(x,'s0',true,new Date('2026-11-18T08:00:00Z'));assert.deepEqual(y.appointments,x.appointments);});
+test('archiving rejects unresolved phone slots',()=>{const x=toggleQuickSlot(initialState(),{day,staffId:'s0',start:540},now,()=> 'q');assert.throws(()=>setStaffArchived(x,'s0',true,now));});
+test('empty active team stays empty after upgrades',()=>{let x=initialState();for(const member of x.staff)x=setStaffArchived(x,member.id,true,now);assert.equal(activeStaff(upgradeDemo(x)).length,0);});

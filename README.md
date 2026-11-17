@@ -45,3 +45,8 @@ Separate Abwesenheitsansicht aus Navigation entfernt; vorhandene Zeitsperren ble
 - Jede Mitarbeiterin bietet alle zentral hinterlegten Leistungen an; auch bisherige lokale Profile werden entsprechend aktualisiert. Termine, Sperren und Fotos bleiben erhalten.
 - Vereinbarter Buchungsablauf: Leistung auf Website wählen, nur durchgehend freie Startzeiten anzeigen, vollständige Dauer in 15-Minuten-Schritten reservieren. Beispiel Ansatzfarbe 90 Minuten: 14:00 bis 15:30 (6 Slots).
 - Vorläufige Katalogplanung zur Salonfreigabe: Herren- und Kinderhaarschnitt je 30 Min., Damen-Trockenhaarschnitt 30 Min., Waschen/Schneiden/Föhnen 60 Min., Ansatzfarbe 90 Min., Komplettfarbe 120 Min., Strähnen 150 Min., Balayage 180 Min. Bestehender Demo-Katalog bleibt bis zur Abstimmung unverändert. Keine Preisfestlegung. Gemeinsames produktives Backend steht aus.
+
+
+## v0.11 — Team hinzufügen und archivieren
+- Teamprofile mit Name, optionalem Schwerpunkt und Foto anlegen. Neue Profile erhalten vorläufig den Demo-Dienstplan Mo–Sa 9–18 Uhr (Pause 13–13:45) und alle zentralen Leistungen. Dienstplan vor Produktion mit Avanti abstimmen.
+- Entfernen archiviert ein Profil und blendet es in Kalender und Buchungsdemo aus; Reaktivierung ist möglich. Historische Daten bleiben erhalten. Offene Kundentermine und Telefon-/Salonslots müssen zuerst geklärt werden. Nur lokaler Pilot; Rollen und Live-Synchronisierung fehlen.
