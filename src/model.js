@@ -56,3 +56,15 @@ export function upgradeDemo(state){
  for(const d of defaults.staff)if(!existing.some(x=>x.id===d.id))existing.push({...d,services:state.services.map(v=>v.id)});
  return {...state,staff:existing};
 }
+
+ // Validate every day before returning a new state; never partially save a range.
+export function blockRange(state,{day,lastDay=day,staffId,start,end,reason,id=null},now=new Date(),newId=()=>globalThis.crypto.randomUUID()){
+ if(!validDay(day)||!validDay(lastDay)||lastDay<day||day<today(now)||lastDay>addDays(today(now),90)||!Number.isInteger(start)||!Number.isInteger(end)||start<0||end>1440||end<=start)throw Error('Bitte einen gültigen Zeitraum innerhalb der nächsten 90 Tage wählen.');
+ if(id&&lastDay!==day)throw Error('Bestehende einzelne Sperren können nur für einen Tag geändert werden.');
+ let next=state;
+ for(let d=day;d<=lastDay;d=addDays(d,1)){
+  try{next=blockTime(next,{day:d,staffId,start,durationMinutes:end-start,reason,id},now,newId);}
+  catch(err){throw Error(d.split('-').reverse().join('.')+': '+err.message);}
+ }
+ return next;
+}

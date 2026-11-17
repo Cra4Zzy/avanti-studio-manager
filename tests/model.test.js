@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {initialState,book,cancel,slots,today,addDays,availableSlots,freeSlots,blockTime,upgradeDemo} from '../src/model.js';
+import {initialState,book,cancel,slots,today,addDays,availableSlots,freeSlots,blockTime,upgradeDemo,blockRange} from '../src/model.js';
 const now=new Date('2026-11-16T08:00:00Z'),day='2026-11-17',s=initialState(),r={day,staffId:'s0',serviceId:'cut',start:540,name:'Test'},make=(state=s,req=r)=>book(state,req,now,()=> 'a');
 test('Berlin local day',()=>assert.equal(today(new Date('2026-11-16T23:30:00Z')),'2026-11-17'));
 test('year boundary',()=>assert.equal(addDays('2026-12-31',1),'2027-01-01'));
@@ -29,3 +29,7 @@ test('whole-day block removes every free slot',()=>{const x=blockTime(s,{day,sta
 
 test('five uniquely named fictional staff and portrait slots',()=>{const x=initialState();assert.equal(x.staff.length,5);assert.equal(new Set(x.staff.map(y=>y.name)).size,5);assert.deepEqual(x.staff.map(y=>y.demoPortrait),[0,1,2,3,4]);});
 test('old demo upgrades without losing appointments, custom names or photos',()=>{const x=make();x.staff=x.staff.slice(0,3);x.staff[0].name='Team A';x.staff[1].name='Eigener Name';x.staff[1].photo='data:image/png;base64,AAAA';const y=upgradeDemo(x);assert.equal(y.staff.length,5);assert.equal(y.staff[0].name,'Daniela');assert.equal(y.staff[1].name,'Eigener Name');assert.equal(y.staff[1].photo,x.staff[1].photo);assert.deepEqual(y.appointments,x.appointments);});
+
+test('multi-day absence stores each day and blocks capacity',()=>{let i=0;const x=blockRange(s,{day,lastDay:addDays(day,2),staffId:'s0',start:0,end:1440,reason:'Urlaub'},now,()=> 'range'+(++i));assert.equal(x.absences.length,3);assert.equal(freeSlots(x,{day:addDays(day,1),staffId:'s0',now}).length,0);assert.equal(s.absences.length,0);});
+test('multi-day conflict leaves all original dates unchanged',()=>{const y=book(s,{...r,day:addDays(day,1)},now,()=> 'later');assert.throws(()=>blockRange(y,{day,lastDay:addDays(day,2),staffId:'s0',start:0,end:1440},now,()=> 'test'));assert.equal(y.absences.length,0);assert.equal(y.appointments.length,1);});
+test('range validation and single edit',()=>{const x=blockRange(s,{day,staffId:'s0',start:600,end:660},now,()=> 'edit');const y=blockRange(x,{day,staffId:'s0',start:660,end:720,id:'edit'},now);assert.equal(y.absences.length,1);assert.equal(y.absences[0].start,660);assert.throws(()=>blockRange(s,{day,lastDay:addDays(day,-1),staffId:'s0',start:0,end:1440},now));});

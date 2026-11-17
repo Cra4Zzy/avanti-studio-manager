@@ -29,3 +29,6 @@ Fiktive Testprofile Daniela, Sofia, Melina, Vanessa, Jennifer mit fünf KI-gener
 
 ## v0.6 — Wochenübersicht (Entwicklungszweig)
 Tag/Woche umschalten, Wochenkennzahlen zum gewählten Teamfilter, direkte Bearbeitung von Terminen und Sperren, Datum antippen für die Tagesansicht. Mobile Wochenübersicht mit zwei bzw. einer Spalte. Ausschließlich lokale Testdaten; kein produktiver Betrieb, keine Installation oder Backend-Verbindung hinzugefügt.
+
+## v0.7 — Abwesenheiten und Sperren
+Eigenständiger Dialog mit Mitarbeiterwahl, Stundenintervall oder ganztägigem Datumsbereich, Grund und sofortiger Konfliktprüfung; mehrtägige Sperren werden vollständig oder gar nicht gespeichert. Einzelne Tage separat bearbeitbar. Eigene Verwaltungsansicht für kommende Sperren. 90-Tage-Horizont wie im bisherigen Pilot. Profile und Leistungen unverändert. Kein produktiver Backend-Betrieb.
