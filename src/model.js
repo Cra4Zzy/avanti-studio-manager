@@ -33,8 +33,9 @@ export function book(state,input,now=new Date(),newId=()=>globalThis.crypto.rand
  const duration=Number(input.durationMinutes??(old&&old.serviceId===serviceId?old.end-old.start:state.services.find(v=>v.id===serviceId)?.duration));
  const allowed=source==='manual'||old?freeSlots(state,{...input,serviceId,durationMinutes:duration,excludeId:old?.id,now}):slots(state,{...input,serviceId,now});
  const slot=allowed.find(x=>x.start===Number(input.start));if(!slot)throw Error('Dieser Zeitraum ist nicht mehr verfügbar. Bitte eine andere Zeit oder Dauer wählen.');
- const name=String(input.name||'').trim().slice(0,80);if(!name)throw Error('Bitte einen Testnamen eingeben.');
- const a={id:old?.id||newId(),day:input.day,staffId:input.staffId,serviceId,start:slot.start,end:slot.end,name,status:'confirmed',source};
+ const name=String(input.name??old?.name??'').trim().slice(0,80)||(source==='manual'?'Telefontermin':'');if(!name)throw Error('Bitte einen Testnamen eingeben.');
+ const phone=String(input.phone??old?.phone??'').trim();if(phone.length>40||phone&&!/^[+0-9()\s./-]+$/.test(phone))throw Error('Bitte eine gültige Telefonnummer eingeben.');
+ const a={id:old?.id||newId(),day:input.day,staffId:input.staffId,serviceId,start:slot.start,end:slot.end,name,phone,status:'confirmed',source};
  return {...state,appointments:[...state.appointments.filter(x=>x.id!==a.id),a]};
 }
 export function blockTime(state,input,now=new Date(),newId=()=>globalThis.crypto.randomUUID()){
@@ -97,7 +98,7 @@ export function quickDay(state,{day,staffId},now=new Date()){
   else if(!working||start<s.start||end>s.end)status='off';
   else if(s.breakEnd>s.breakStart&&start<s.breakEnd&&s.breakStart<end)status='pause';
   else if(day<today(now)||day===today(now)&&start<=berlinMinute(now))status='past';
-  result.push({start,end,status,appointmentId:appointment?.id,blockId:block?.id,label:appointment?.name||block?.reason||''});
+  result.push({start,end,status,appointmentId:appointment?.id,blockId:block?.id,label:appointment?.name||block?.reason||'',source:appointment?.source});
  }return result;
 }
 

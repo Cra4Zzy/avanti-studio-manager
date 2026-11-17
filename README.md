@@ -50,3 +50,8 @@ Separate Abwesenheitsansicht aus Navigation entfernt; vorhandene Zeitsperren ble
 ## v0.11 — Team hinzufügen und archivieren
 - Teamprofile mit Name, optionalem Schwerpunkt und Foto anlegen. Neue Profile erhalten vorläufig den Demo-Dienstplan Mo–Sa 9–18 Uhr (Pause 13–13:45) und alle zentralen Leistungen. Dienstplan vor Produktion mit Avanti abstimmen.
 - Entfernen archiviert ein Profil und blendet es in Kalender und Buchungsdemo aus; Reaktivierung ist möglich. Historische Daten bleiben erhalten. Offene Kundentermine und Telefon-/Salonslots müssen zuerst geklärt werden. Nur lokaler Pilot; Rollen und Live-Synchronisierung fehlen.
+
+
+## v0.13 — Telefontermine
+- Kalender: Standardmodus Zeit sperren (ein Klick = 15 Minuten) unverändert. Modus Telefontermin: freie Startzeit wählen, Dauer aus durchgehend verfügbaren 15-Minuten-Schritten auswählen, optional Testname und Testtelefonnummer speichern. Nach dem Speichern zurück zum Sperrmodus. Terminfarbe unterscheidet Telefontermine von Zeitsperren und Online-Buchungen; Name sichtbar, Telefonnummer nur im internen Bearbeitungsdialog. Alle Buchungswege teilen die Kapazitätsprüfung. Keine echten personenbezogenen Daten im Pilot.
+- KI-Telefonassistent ausdrücklich aus dem Projektumfang gestrichen. Gemeinsames Backend, Authentifizierung und produktive Datensicherheit bleiben offen.
