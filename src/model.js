@@ -53,7 +53,7 @@ export function book(state,input,now=new Date(),newId=()=>globalThis.crypto.rand
  const slot=allowed.find(x=>x.start===Number(input.start));if(!slot)throw Error('Dieser Zeitraum ist nicht mehr verfügbar. Bitte eine andere Zeit oder Dauer wählen.');
  const name=String(input.name??old?.name??'').trim().slice(0,80)||(source==='manual'?'Telefontermin':'');if(!name)throw Error('Bitte einen Testnamen eingeben.');
  const phone=String(input.phone??old?.phone??'').trim();if(phone.length>40||phone&&!/^[+0-9()\s./-]+$/.test(phone))throw Error('Bitte eine gültige Telefonnummer eingeben.');
- const a={id:old?.id||newId(),day:input.day,staffId:input.staffId,serviceId,start:slot.start,end:slot.end,name,phone,status:'confirmed',source};
+ const a={id:old?.id||newId(),day:input.day,staffId:input.staffId,serviceId,start:slot.start,end:slot.end,name,phone,email:normalizeEmail(input.email??old?.email??''),status:'confirmed',source};
  return {...state,appointments:[...state.appointments.filter(x=>x.id!==a.id),a]};
 }
 export function blockTime(state,input,now=new Date(),newId=()=>globalThis.crypto.randomUUID()){
@@ -188,5 +188,24 @@ export function updateAppointmentContact(state,id,input){
  const old=state.appointments.find(a=>a.id===id&&a.status==='confirmed');if(!old)throw Error('Termin nicht mehr vorhanden.');
  const name=String(input.name??old.name??'').trim().slice(0,80)||(old.source==='manual'?'Telefontermin':'');if(!name)throw Error('Bitte einen Testnamen eingeben.');
  const phone=String(input.phone??old.phone??'').trim();if(phone.length>40||phone&&!/^[+0-9()\s./-]+$/.test(phone))throw Error('Bitte eine gültige Telefonnummer eingeben.');
- return {...state,appointments:state.appointments.map(a=>a.id===id?{...a,name,phone}:a)};
+ return {...state,appointments:state.appointments.map(a=>a.id===id?{...a,name,phone,email:normalizeEmail(input.email??old.email??'')}:a)};
+}
+
+export function normalizeEmail(value,required=false){
+ const email=String(value??'').trim();
+ if(!email&&!required)return '';
+ if(email.length>254||! /^[^\s@<>]+@[^\s@<>.]+(?:\.[^\s@<>.]+)+$/.test(email)||/[\u0000-\u001f\u007f]/.test(email))throw Error('Bitte eine gültige E-Mail-Adresse eingeben.');
+ return email;
+}
+const mailEscape=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// Provider-neutral message. Production: trigger only after server-confirmed booking.
+export function bookingConfirmation(state,id){
+ const a=state.appointments.find(x=>x.id===id&&x.status==='confirmed');if(!a)throw Error('Termin nicht bestätigt.');
+ const to=normalizeEmail(a.email,true),person=state.staff.find(s=>s.id===a.staffId),service=state.services.find(s=>s.id===a.serviceId);if(!person)throw Error('Mitarbeiterprofil nicht gefunden.');
+ const date=new Intl.DateTimeFormat('de-DE',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(a.day+'T00:00:00Z'));
+ const details=[['Datum',date],['Uhrzeit',time(a.start)+'–'+time(a.end)+' Uhr'],['Behandlung',service?.name||'Telefontermin'],['Stylistin',person.name],['Dauer',(a.end-a.start)+' Minuten'],['Salon','In den Sandäckern 2 · Wallhausen']];
+ const subject='Dein Termin bei Haarstudio Avanti ist bestätigt',intro='Hallo '+a.name+', vielen Dank für deine Buchung. Wir freuen uns auf deinen Besuch!',end='Falls du deinen Termin ändern oder absagen möchtest, melde dich bitte beim Salon.';
+ const text=intro+'\n\n'+details.map(([k,v])=>k+': '+v).join('\n')+'\n\n'+end+'\nhttps://haarstudio-avanti.de/\n\nDein Avanti-Team';
+ const html='<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:#f5f2ed;color:#29231f;font-family:Arial,sans-serif"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:24px 12px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:540px;background:#fffefa;border:1px solid #ded6c8;border-radius:16px"><tr><td style="padding:26px;background:#262a25;color:#fff;border-radius:16px 16px 0 0"><div style="font:italic 40px Georgia,serif">Avanti</div><div style="font-size:11px;letter-spacing:2px">HAARSTUDIO</div></td></tr><tr><td style="padding:30px 24px"><p style="font-size:12px;font-weight:bold;color:#496450;letter-spacing:1px">TERMIN BESTÄTIGT</p><h1 style="font:normal 30px Georgia,serif;margin:12px 0 20px">Wir freuen uns auf dich.</h1><p style="line-height:1.6">'+mailEscape(intro)+'</p><table role="presentation" width="100%" cellspacing="0" cellpadding="6" style="background:#f1f0ec;border-radius:10px;margin:22px 0;padding:10px">'+details.map(([k,v])=>'<tr><td style="font-size:13px;color:#51594d">'+mailEscape(k)+'</td><td style="font-size:14px;font-weight:bold">'+mailEscape(v)+'</td></tr>').join('')+'</table><p style="line-height:1.6">'+mailEscape(end)+'</p><p><a href="https://haarstudio-avanti.de/" style="color:#496450;font-weight:bold">Zur Salonwebsite</a></p><p>Dein Avanti-Team</p></td></tr></table></td></tr></table></body></html>';
+ return {to,subject,text,html};
 }

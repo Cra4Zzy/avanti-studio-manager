@@ -69,3 +69,8 @@ Separate Abwesenheitsansicht aus Navigation entfernt; vorhandene Zeitsperren ble
 ## v0.17 — Termine verschieben und absagen
 - Gebuchten Slot im Einzel- oder Gesamtkalender wählen: kompakte Termindetails, Verschieben, Kontaktdaten bearbeiten, Absagen. Beim Verschieben Datum und Mitarbeiterin auswählen; angebotene Startzeiten berücksichtigen die ursprüngliche Dauer, Dienstzeiten, Pausen, Sperren und andere Termine. Alte Belegung wird erst nach erfolgreicher Speicherung freigegeben. IDs, Kontaktdaten und Buchungsquelle bleiben erhalten.
 - Absage mit separater Bestätigung, Status bleibt in der Historie; Rückgängig (8 Sekunden) für Absage und Verschiebung, nur wenn ursprüngliche Zeit weiterhin verfügbar ist. Keine automatischen Kundenbenachrichtigungen; lokaler Pilot.
+
+
+## v0.18 — E-Mail-Terminbestätigung (Vorschau)
+- Online-Buchung erfasst eine Test-E-Mail-Adresse und generiert nach erfolgreicher lokaler Buchung die Avanti-Bestätigung (HTML und Plaintext). Vorschau nach Buchung, kein Versand. E-Mail in internen Termindetails bearbeitbar und bleibt beim Verschieben erhalten. Keine Echtdaten im Pilot.
+- Produktionsplanung: erst nach serverseitig bestätigter Buchung eine idempotente Versandaufgabe erzeugen (eindeutiger Schlüssel pro Termin und Benachrichtigungstyp); Versand serverseitig über bestätigtes SMTP-Postfach oder Transaktionsmail-Dienst. Fehler protokollieren und wiederholen, Buchung bleibt bei Mailfehler erhalten. SPF/DKIM/DMARC und Datenschutz vor Livegang prüfen. Kein Maildienst eingerichtet, keine Absage-/Änderungs-E-Mails oder Selbstabsagelinks.
