@@ -74,3 +74,7 @@ Separate Abwesenheitsansicht aus Navigation entfernt; vorhandene Zeitsperren ble
 ## v0.18 — E-Mail-Terminbestätigung (Vorschau)
 - Online-Buchung erfasst eine Test-E-Mail-Adresse und generiert nach erfolgreicher lokaler Buchung die Avanti-Bestätigung (HTML und Plaintext). Vorschau nach Buchung, kein Versand. E-Mail in internen Termindetails bearbeitbar und bleibt beim Verschieben erhalten. Keine Echtdaten im Pilot.
 - Produktionsplanung: erst nach serverseitig bestätigter Buchung eine idempotente Versandaufgabe erzeugen (eindeutiger Schlüssel pro Termin und Benachrichtigungstyp); Versand serverseitig über bestätigtes SMTP-Postfach oder Transaktionsmail-Dienst. Fehler protokollieren und wiederholen, Buchung bleibt bei Mailfehler erhalten. SPF/DKIM/DMARC und Datenschutz vor Livegang prüfen. Kein Maildienst eingerichtet, keine Absage-/Änderungs-E-Mails oder Selbstabsagelinks.
+
+
+## v0.19 — Schließtage
+- Team: Betriebszeiten & Schließtage. Gesetzliche Feiertage Baden-Württemberg automatisch berechnet, einzelne Ausnahmen nur bei rechtlich zulässiger Öffnung. Quelle: https://im.baden-wuerttemberg.de/de/service/feiertage/ . Zusätzliche Schließzeiten bis 365 Tage im Voraus mit Konfliktwarnung; keine automatische Stornierung. Zentrale Sperren gelten auch für neu angelegte Mitglieder. Freigabe lässt individuelle Sperren bestehen. Lokaler Pilot.

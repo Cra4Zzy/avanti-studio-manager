@@ -31,7 +31,7 @@ export function setWeeklySchedule(state,id,schedule,now=new Date()){
 export function validDay(day){return typeof day==='string'&&/^\d{4}-\d\d-\d\d$/.test(day)&&Number.isFinite(Date.parse(day+'T00:00:00Z'))&&new Date(day+'T00:00:00Z').toISOString().slice(0,10)===day;}
 export function freeSlots(state,{day,staffId,durationMinutes=15,serviceId=null,excludeId=null,now=new Date()}){
  const s=state.staff.find(x=>x.id===staffId),shift=dayShift(s,day);
- if(!validDay(day)||day<today(now)||day>addDays(today(now),90)||!s||s.archived===true||!shift||!Number.isInteger(durationMinutes)||durationMinutes<15||durationMinutes>480||durationMinutes%15!==0)return [];
+ if(!validDay(day)||day<today(now)||day>addDays(today(now),90)||!s||s.archived===true||!shift||salonClosure(state,day)||!Number.isInteger(durationMinutes)||durationMinutes<15||durationMinutes>480||durationMinutes%15!==0)return [];
  if(serviceId&&(!state.services.some(v=>v.id===serviceId)||!s.services.includes(serviceId)))return [];
  const blocks=[...state.appointments.filter(a=>a.status==='confirmed'&&a.day===day&&a.staffId===staffId&&a.id!==excludeId),...state.absences.filter(a=>a.day===day&&a.staffId===staffId&&a.id!==excludeId)];
  if(shift.breakEnd>shift.breakStart)blocks.push({start:shift.breakStart,end:shift.breakEnd});
@@ -110,6 +110,7 @@ export function quickDay(state,{day,staffId},now=new Date()){
   const appointment=appointments.find(overlaps),block=blocks.find(a=>a.vacationId)||blocks.find(a=>a.wholeDay===true)||blocks.find(overlaps);
   let status='unavailable';
   if(appointment)status='booked';
+  else if(salonClosure(state,day))status='closed';
   else if(block?.vacationId)status='vacation';
   else if(block?.wholeDay===true)status='wholeDay';
   else if(block)status=block.quickSlot===true&&block.start===start&&block.end===end&&day>=today(now)&&day<=addDays(today(now),90)?'quick':'absence';
@@ -117,7 +118,7 @@ export function quickDay(state,{day,staffId},now=new Date()){
   else if(!working||start<shift.start||end>shift.end)status='off';
   else if(shift.breakEnd>shift.breakStart&&start<shift.breakEnd&&shift.breakStart<end)status='pause';
   else if(day<today(now)||day===today(now)&&start<=berlinMinute(now))status='past';
-  result.push({start,end,status,appointmentId:appointment?.id,blockId:block?.id,label:appointment?.name||block?.reason||'',source:appointment?.source});
+  result.push({start,end,status,appointmentId:appointment?.id,blockId:block?.id,label:appointment?.name||salonClosure(state,day)?.name||block?.reason||'',source:appointment?.source});
  }return result;
 }
 
@@ -125,7 +126,7 @@ function berlinMinute(now){const [h,m]=new Intl.DateTimeFormat('en-GB',{timeZone
 export function nextWorkday(state,staffId,now=new Date()){
  const s=state.staff.find(x=>x.id===staffId),d=today(now);
  if(!s)return d;
- for(let i=0;i<8;i++){const date=addDays(d,i),shift=dayShift(s,date);if(shift&&(i>0||berlinMinute(now)<shift.end))return date;}
+ for(let i=0;i<=90;i++){const date=addDays(d,i),shift=dayShift(s,date);if(shift&&!salonClosure(state,date)&&(i>0||berlinMinute(now)<shift.end))return date;}
  return d;
 }
 export function toggleWholeDay(state,{day,staffId},now=new Date(),newId=()=>globalThis.crypto.randomUUID()){
@@ -208,4 +209,39 @@ export function bookingConfirmation(state,id){
  const text=intro+'\n\n'+details.map(([k,v])=>k+': '+v).join('\n')+'\n\n'+end+'\nhttps://haarstudio-avanti.de/\n\nDein Avanti-Team';
  const html='<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:#f5f2ed;color:#29231f;font-family:Arial,sans-serif"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:24px 12px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:540px;background:#fffefa;border:1px solid #ded6c8;border-radius:16px"><tr><td style="padding:26px;background:#262a25;color:#fff;border-radius:16px 16px 0 0"><div style="font:italic 40px Georgia,serif">Avanti</div><div style="font-size:11px;letter-spacing:2px">HAARSTUDIO</div></td></tr><tr><td style="padding:30px 24px"><p style="font-size:12px;font-weight:bold;color:#496450;letter-spacing:1px">TERMIN BESTÄTIGT</p><h1 style="font:normal 30px Georgia,serif;margin:12px 0 20px">Wir freuen uns auf dich.</h1><p style="line-height:1.6">'+mailEscape(intro)+'</p><table role="presentation" width="100%" cellspacing="0" cellpadding="6" style="background:#f1f0ec;border-radius:10px;margin:22px 0;padding:10px">'+details.map(([k,v])=>'<tr><td style="font-size:13px;color:#51594d">'+mailEscape(k)+'</td><td style="font-size:14px;font-weight:bold">'+mailEscape(v)+'</td></tr>').join('')+'</table><p style="line-height:1.6">'+mailEscape(end)+'</p><p><a href="https://haarstudio-avanti.de/" style="color:#496450;font-weight:bold">Zur Salonwebsite</a></p><p>Dein Avanti-Team</p></td></tr></table></td></tr></table></body></html>';
  return {to,subject,text,html};
+}
+
+const holidayCache=new Map();
+export function bwHolidays(year){
+ if(holidayCache.has(year))return holidayCache.get(year);
+ const a=year%19,b=Math.floor(year/100),c=year%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),n=h+l-7*m+114;
+ const easter=year+'-'+String(Math.floor(n/31)).padStart(2,'0')+'-'+String(n%31+1).padStart(2,'0');
+ const fixed=[['01-01','Neujahr'],['01-06','Heilige Drei Könige'],['05-01','Tag der Arbeit'],['10-03','Tag der Deutschen Einheit'],['11-01','Allerheiligen'],['12-25','1. Weihnachtsfeiertag'],['12-26','2. Weihnachtsfeiertag']].map(([date,name])=>({date:year+'-'+date,name}));
+ const movable=[[-2,'Karfreitag'],[1,'Ostermontag'],[39,'Christi Himmelfahrt'],[50,'Pfingstmontag'],[60,'Fronleichnam']].map(([offset,name])=>({date:addDays(easter,offset),name}));
+ const result=[...fixed,...movable].sort((a,b)=>a.date.localeCompare(b.date));holidayCache.set(year,result);return result;
+}
+export function salonClosure(state,date){
+ if(!validDay(date))return null;
+ const custom=(state.closures||[]).find(x=>x.start<=date&&date<=x.end);if(custom)return {name:custom.name,kind:'custom'};
+ const holiday=bwHolidays(Number(date.slice(0,4))).find(x=>x.date===date);
+ return holiday&&!(state.openHolidays||[]).includes(date)?{name:holiday.name,kind:'holiday'}:null;
+}
+export function closureConflicts(state,start,end,now=new Date()){
+ const upcoming=a=>a.day>=start&&a.day<=end&&(a.day>today(now)||a.day===today(now)&&a.end>berlinMinute(now));
+ return [...state.appointments.filter(a=>a.status==='confirmed'&&upcoming(a)),...state.absences.filter(a=>a.quickSlot&&upcoming(a))];
+}
+export function addClosure(state,{start,end,name,acknowledge=false},now=new Date(),newId=()=>globalThis.crypto.randomUUID()){
+ if(!validDay(start)||!validDay(end)||start<today(now)||end<start||end>addDays(today(now),365))throw Error('Bitte einen gültigen Zeitraum innerhalb der nächsten 365 Tage wählen.');
+ if((state.closures||[]).some(x=>start<=x.end&&x.start<=end))throw Error('Es gibt bereits einen Schließzeitraum, der sich überschneidet.');
+ if(closureConflicts(state,start,end,now).length&&!acknowledge)throw Error('Bitte bestehende Termine zuerst berücksichtigen.');
+ return {...state,closures:[...(state.closures||[]),{id:newId(),start,end,name:String(name||'Betriebsurlaub').trim().slice(0,80)||'Betriebsurlaub'}]};
+}
+export function removeClosure(state,id,now=new Date()){
+ const item=(state.closures||[]).find(x=>x.id===id);if(!item)throw Error('Schließzeitraum nicht gefunden.');
+ return {...state,closures:state.closures.flatMap(x=>x.id!==id?[x]:x.start<today(now)?[{...x,end: x.end<today(now)?x.end:addDays(today(now),-1)}]:[])};
+}
+export function setHolidayOpen(state,date,open,acknowledge=false,now=new Date()){
+ if(!validDay(date)||date<today(now)||date>addDays(today(now),365)||!bwHolidays(Number(date.slice(0,4))).some(x=>x.date===date))throw Error('Ungültiger Feiertag.');
+ if(!open&&closureConflicts(state,date,date,now).length&&!acknowledge)throw Error('Bitte bestehende Termine zuerst berücksichtigen.');
+ return {...state,openHolidays:[...new Set([...(state.openHolidays||[]).filter(x=>x!==date),...(open?[date]:[])])]};
 }
