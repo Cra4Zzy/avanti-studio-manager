@@ -32,3 +32,6 @@ Tag/Woche umschalten, Wochenkennzahlen zum gewählten Teamfilter, direkte Bearbe
 
 ## v0.7 — Abwesenheiten und Sperren
 Eigenständiger Dialog mit Mitarbeiterwahl, Stundenintervall oder ganztägigem Datumsbereich, Grund und sofortiger Konfliktprüfung; mehrtägige Sperren werden vollständig oder gar nicht gespeichert. Einzelne Tage separat bearbeitbar. Eigene Verwaltungsansicht für kommende Sperren. 90-Tage-Horizont wie im bisherigen Pilot. Profile und Leistungen unverändert. Kein produktiver Backend-Betrieb.
+
+## v0.8 — Persönlicher Wochenplan
+Mitarbeiterin wählen, Wochentag wählen, freie 15-Minuten-Slots mit einem Klick sperren und erneut freigeben. Solche Sperren nutzen die gleiche lokale Verfügbarkeitslogik wie die öffentliche Buchungsdemo. Online-Termine und reguläre Abwesenheiten sind getrennt und können nicht per Schnellschalter gelöscht werden. Profile und Leistungen unverändert. Kein Login/Backend; nur innerhalb desselben Browserprofils synchron.

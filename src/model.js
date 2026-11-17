@@ -68,3 +68,32 @@ export function blockRange(state,{day,lastDay=day,staffId,start,end,reason,id=nu
  }
  return next;
 }
+
+/* Only explicitly created quick slots may be released with a single click. */
+export function toggleQuickSlot(state,{day,staffId,start},now=new Date(),newId=()=>globalThis.crypto.randomUUID()){
+ if(!Number.isInteger(start)||start%15||!validDay(day)||day<today(now)||day>addDays(today(now),90)||!state.staff.some(s=>s.id===staffId))throw Error('Dieser Zeitslot ist nicht verfügbar.');
+ const own=state.absences.find(a=>a.quickSlot===true&&a.day===day&&a.staffId===staffId&&a.start===start&&a.end===start+15);
+ if(own)return {...state,absences:state.absences.filter(a=>a.id!==own.id)};
+ if(!freeSlots(state,{day,staffId,now,durationMinutes:15}).some(a=>a.start===start))throw Error('Dieser Zeitslot ist bereits belegt oder liegt außerhalb der Arbeitszeit.');
+ const next=blockTime(state,{day,staffId,start,durationMinutes:15,reason:'Telefon / Salon'},now,newId);
+ return {...next,absences:next.absences.map((a,i)=>i===next.absences.length-1?{...a,quickSlot:true}:a)};
+}
+export function quickDay(state,{day,staffId},now=new Date()){
+ const s=state.staff.find(x=>x.id===staffId);if(!s||!validDay(day))return [];
+ const working=s.days.includes(new Date(day+'T00:00:00Z').getUTCDay());
+ const free=new Set(freeSlots(state,{day,staffId,now,durationMinutes:15}).map(a=>a.start));
+ const appointments=state.appointments.filter(a=>a.day===day&&a.staffId===staffId&&a.status==='confirmed');
+ const blocks=state.absences.filter(a=>a.day===day&&a.staffId===staffId);
+ const min=Math.min(s.start,...appointments.map(a=>a.start)),max=Math.max(s.end,...appointments.map(a=>a.end));
+ const result=[];for(let start=Math.floor(min/15)*15;start<max;start+=15){
+  const end=start+15,overlaps=a=>start<a.end&&a.start<end;
+  const appointment=appointments.find(overlaps),block=blocks.find(overlaps);
+  let status='unavailable';
+  if(appointment)status='booked';
+  else if(block)status=block.quickSlot===true&&block.start===start&&block.end===end&&day>=today(now)&&day<=addDays(today(now),90)?'quick':'absence';
+  else if(free.has(start))status='free';
+  else if(!working||start<s.start||end>s.end)status='off';
+  else if(s.breakEnd>s.breakStart&&start<s.breakEnd&&s.breakStart<end)status='pause';
+  result.push({start,end,status,appointmentId:appointment?.id,blockId:block?.id,label:appointment?.name||block?.reason||''});
+ }return result;
+}
