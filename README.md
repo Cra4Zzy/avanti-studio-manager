@@ -35,3 +35,6 @@ Eigenständiger Dialog mit Mitarbeiterwahl, Stundenintervall oder ganztägigem D
 
 ## v0.8 — Persönlicher Wochenplan
 Mitarbeiterin wählen, Wochentag wählen, freie 15-Minuten-Slots mit einem Klick sperren und erneut freigeben. Solche Sperren nutzen die gleiche lokale Verfügbarkeitslogik wie die öffentliche Buchungsdemo. Online-Termine und reguläre Abwesenheiten sind getrennt und können nicht per Schnellschalter gelöscht werden. Profile und Leistungen unverändert. Kein Login/Backend; nur innerhalb desselben Browserprofils synchron.
+
+## v0.9 — Kalender und Team & Leistungen
+Separate Abwesenheitsansicht aus Navigation entfernt; vorhandene Zeitsperren bleiben gespeichert und im Kalender sichtbar. Ganztagsschalter blockiert alle neuen Buchungen der gewählten Mitarbeiterin, ohne vorhandene Termine oder Einzelzeitsperren zu löschen; erneutes Anklicken hebt nur diese Tagessperre auf. Start am nächsten Arbeitstag nach Feierabend, vergangene Slots beschriftet. Lokaler Pilot.

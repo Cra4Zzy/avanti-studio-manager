@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {initialState,book,cancel,slots,today,addDays,availableSlots,freeSlots,blockTime,upgradeDemo,blockRange,toggleQuickSlot,quickDay} from '../src/model.js';
+import {initialState,book,cancel,slots,today,addDays,availableSlots,freeSlots,blockTime,upgradeDemo,blockRange,toggleQuickSlot,quickDay,nextWorkday,toggleWholeDay} from '../src/model.js';
 const now=new Date('2026-11-16T08:00:00Z'),day='2026-11-17',s=initialState(),r={day,staffId:'s0',serviceId:'cut',start:540,name:'Test'},make=(state=s,req=r)=>book(state,req,now,()=> 'a');
 test('Berlin local day',()=>assert.equal(today(new Date('2026-11-16T23:30:00Z')),'2026-11-17'));
 test('year boundary',()=>assert.equal(addDays('2026-12-31',1),'2027-01-01'));
@@ -38,3 +38,7 @@ test('two direct clicks block thirty minutes and toggling releases exactly one s
 test('quick slots cannot overwrite actual appointments, breaks or normal absences',()=>{const req={day,staffId:'s0',start:540};assert.throws(()=>toggleQuickSlot(make(),req,now));assert.throws(()=>toggleQuickSlot(s,{...req,start:780},now));const x=blockTime(s,{...req,durationMinutes:15},now,()=> 'normal');assert.throws(()=>toggleQuickSlot(x,req,now));assert.equal(x.absences.length,1);});
 test('personal slots identify booking, quick block, absence and break separately',()=>{const x=make();const y=toggleQuickSlot(x,{day,staffId:'s0',start:600},now,()=> 'quick');const z=blockTime(y,{day,staffId:'s0',start:630,durationMinutes:15},now,()=> 'absence');const map=new Map(quickDay(z,{day,staffId:'s0'},now).map(t=>[t.start,t.status]));assert.equal(map.get(540),'booked');assert.equal(map.get(600),'quick');assert.equal(map.get(630),'absence');assert.equal(map.get(780),'pause');assert.equal(map.get(645),'free');});
 test('quick slots reject past dates, off days and nonquarter starts',()=>{assert.throws(()=>toggleQuickSlot(s,{day:'2026-11-15',staffId:'s0',start:540},now));assert.throws(()=>toggleQuickSlot(s,{day:'2026-11-22',staffId:'s0',start:540},now));assert.throws(()=>toggleQuickSlot(s,{day,staffId:'s0',start:541},now));});
+
+test('day lock preserves appointments and previous quick slots, and releases only itself',()=>{const x=toggleQuickSlot(make(),{day,staffId:'s0',start:600},now,()=> 'quick');const y=toggleWholeDay(x,{day,staffId:'s0'},now,()=> 'whole');assert.equal(y.appointments.length,1);assert.equal(freeSlots(y,{day,staffId:'s0',now}).length,0);assert.equal(quickDay(y,{day,staffId:'s0'},now).find(t=>t.start===540).status,'booked');assert.throws(()=>toggleQuickSlot(y,{day,staffId:'s0',start:600},now));const z=toggleWholeDay(y,{day,staffId:'s0'},now);assert.deepEqual(z,x);});
+test('next working day after closing and on Sunday',()=>{assert.equal(nextWorkday(s,'s0',new Date('2026-11-17T18:32:00Z')),'2026-11-18');assert.equal(nextWorkday(s,'s0',new Date('2026-11-22T10:00:00Z')),'2026-11-23');});
+test('elapsed work slots are labeled past',()=>{assert.equal(quickDay(s,{day,staffId:'s0'},new Date('2026-11-17T18:32:00Z')).find(t=>t.start===540).status,'past');});

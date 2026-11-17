@@ -72,6 +72,7 @@ export function blockRange(state,{day,lastDay=day,staffId,start,end,reason,id=nu
 /* Only explicitly created quick slots may be released with a single click. */
 export function toggleQuickSlot(state,{day,staffId,start},now=new Date(),newId=()=>globalThis.crypto.randomUUID()){
  if(!Number.isInteger(start)||start%15||!validDay(day)||day<today(now)||day>addDays(today(now),90)||!state.staff.some(s=>s.id===staffId))throw Error('Dieser Zeitslot ist nicht verfügbar.');
+ if(state.absences.some(a=>a.day===day&&a.staffId===staffId&&a.wholeDay===true))throw Error('Bitte zuerst die Tagessperre aufheben.');
  const own=state.absences.find(a=>a.quickSlot===true&&a.day===day&&a.staffId===staffId&&a.start===start&&a.end===start+15);
  if(own)return {...state,absences:state.absences.filter(a=>a.id!==own.id)};
  if(!freeSlots(state,{day,staffId,now,durationMinutes:15}).some(a=>a.start===start))throw Error('Dieser Zeitslot ist bereits belegt oder liegt außerhalb der Arbeitszeit.');
@@ -87,13 +88,29 @@ export function quickDay(state,{day,staffId},now=new Date()){
  const min=Math.min(s.start,...appointments.map(a=>a.start)),max=Math.max(s.end,...appointments.map(a=>a.end));
  const result=[];for(let start=Math.floor(min/15)*15;start<max;start+=15){
   const end=start+15,overlaps=a=>start<a.end&&a.start<end;
-  const appointment=appointments.find(overlaps),block=blocks.find(overlaps);
+  const appointment=appointments.find(overlaps),block=blocks.find(a=>a.wholeDay===true)||blocks.find(overlaps);
   let status='unavailable';
   if(appointment)status='booked';
+  else if(block?.wholeDay===true)status='wholeDay';
   else if(block)status=block.quickSlot===true&&block.start===start&&block.end===end&&day>=today(now)&&day<=addDays(today(now),90)?'quick':'absence';
   else if(free.has(start))status='free';
   else if(!working||start<s.start||end>s.end)status='off';
   else if(s.breakEnd>s.breakStart&&start<s.breakEnd&&s.breakStart<end)status='pause';
+  else if(day<today(now)||day===today(now)&&start<=berlinMinute(now))status='past';
   result.push({start,end,status,appointmentId:appointment?.id,blockId:block?.id,label:appointment?.name||block?.reason||''});
  }return result;
+}
+
+function berlinMinute(now){const [h,m]=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(now).split(':').map(Number);return h*60+m;}
+export function nextWorkday(state,staffId,now=new Date()){
+ const s=state.staff.find(x=>x.id===staffId),d=today(now);
+ if(!s||!s.days.length)return d;
+ for(let i=0;i<8;i++){const date=addDays(d,i);if(s.days.includes(new Date(date+'T00:00:00Z').getUTCDay())&&(i>0||berlinMinute(now)<s.end))return date;}
+ return d;
+}
+export function toggleWholeDay(state,{day,staffId},now=new Date(),newId=()=>globalThis.crypto.randomUUID()){
+ if(!validDay(day)||day<today(now)||day>addDays(today(now),90)||!state.staff.some(s=>s.id===staffId))throw Error('Bitte einen gültigen Tag auswählen.');
+ const own=state.absences.find(a=>a.day===day&&a.staffId===staffId&&a.wholeDay===true);
+ if(own)return {...state,absences:state.absences.filter(a=>a.id!==own.id)};
+ return {...state,absences:[...state.absences,{id:newId(),day,staffId,start:0,end:1440,reason:'Tag gesperrt',wholeDay:true}]};
 }
