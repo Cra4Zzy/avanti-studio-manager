@@ -121,3 +121,41 @@ body[data-screen=studio]{background:#f1f0ec;color:#252824}body[data-screen=studi
 @media(min-width:1440px){.personal-slots{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:1150px){.personal-workspace{grid-template-columns:185px minmax(0,1fr);gap:14px}.personal-days{grid-template-columns:repeat(7,minmax(0,1fr))}.personal-day{padding:9px 5px}.personal-day strong{font-size:19px}}@media(max-width:900px){.personal-workspace{grid-template-columns:1fr}.personal-sidebar{position:static;padding:10px}.personal-sidebar>.personal-caption{margin:0 4px 6px}.personal-team{grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}.personal-person{flex-direction:column;align-items:center;gap:4px;min-height:75px;text-align:center;padding:6px 2px}.personal-person .avatar{width:35px;height:35px}.personal-person>span:nth-child(2){width:100%}.personal-person small,.personal-person i,.personal-side-note{display:none}.personal-person strong{font-size:12px}}@media(max-width:650px){body[data-screen=studio] main{padding:12px}.personal-week,.personal-daily{padding:12px}.personal-days{grid-template-columns:repeat(4,minmax(0,1fr))}.personal-day{min-height:89px}.personal-top h1{font-size:26px}.personal-weeknav button{padding:8px 9px}.personal-daily-title{align-items:start;flex-direction:column}.personal-counters{justify-content:flex-start}.personal-slots{grid-template-columns:1fr}.personal-slot{min-height:62px;padding:9px}.personal-top{align-items:start}.personal-top p{display:none}}@media(max-width:360px){.personal-days{grid-template-columns:repeat(2,minmax(0,1fr))}.personal-slot small{font-size:8px}.personal-person strong{font-size:10px}}
 
 .personal-day-actions{display:grid;gap:7px;justify-items:end}.personal-day-toggle{min-height:42px;background:#fffefa;border:1px solid #b98672;color:#84462e;padding:8px 13px;font-weight:700;border-radius:8px}.personal-day-toggle[aria-pressed=true]{background:#a85e3d;color:#fff;border-color:#8f4d30}.personal-slot.slot-wholeDay:disabled{background:#f1dcd2;border-color:#d5b0a0;color:#84462e}.personal-slot.slot-past:disabled{color:#697065;background:#eaece6}.personal-day-toggle:disabled{opacity:.5}@media(max-width:650px){.personal-day-actions{justify-items:start;width:100%}.personal-day-toggle{width:100%}}
+
+/* v0.12 — Team workspace uses the personal calendar's visual system. */
+body[data-screen=team]{--team-bg:#f1f0ec;--team-surface:#fffefa;--team-ink:#252824;--team-muted:#51594d;--team-line:#e1e1d8;--team-accent:#303e31;--team-tint:#e6ebde;background:var(--team-bg);color:var(--team-ink)}
+body[data-screen=team] header{min-height:72px;padding-top:13px;padding-bottom:13px;background:#262a25;color:#fff;box-shadow:none}
+body[data-screen=team] header .brand{color:#fff}
+body[data-screen=team] header .brand small{color:#d6d8c8}
+body[data-screen=team] header nav a{color:#e6e8df}
+body[data-screen=team] header nav a.active{background:#42483c;color:#fff}
+body[data-screen=team] main{max-width:1600px;padding:26px 28px 40px}
+body[data-screen=team] main .heading{align-items:center;margin:0 0 18px;gap:16px}
+body[data-screen=team] main .heading h1{font:700 clamp(25px,3vw,42px)/1.1 system-ui;letter-spacing:-1.5px;margin:6px 0;color:var(--team-ink)}
+body[data-screen=team] main .heading .eyebrow{font:750 10px system-ui;letter-spacing:1.5px;color:#737a6b}
+body[data-screen=team] main .heading p{font-size:13px;color:var(--team-muted)}
+body[data-screen=team] main .notice{background:var(--team-tint);color:#3a4f37;border:1px solid #d5dfce;border-radius:10px;padding:12px 14px;margin-bottom:20px}
+body[data-screen=team] main .grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,290px),1fr));gap:16px;align-items:stretch}
+body[data-screen=team] main .panel{min-width:0;gap:15px;padding:20px;background:var(--team-surface);border:1px solid var(--team-line);border-radius:15px;box-shadow:none;color:var(--team-ink)}
+body[data-screen=team] main .panel>.controls:first-child{gap:12px;min-height:60px;margin-bottom:3px;flex-wrap:nowrap}
+body[data-screen=team] main .panel h2,body[data-screen=team] main>h2,body[data-screen=team] dialog h2{font:700 19px/1.2 system-ui;letter-spacing:-.4px;color:#292e27;overflow-wrap:anywhere}
+body[data-screen=team] main .avatar{width:58px;height:58px;flex-shrink:0;border-radius:50%;background-color:var(--team-tint);color:var(--team-accent)}
+body[data-screen=team] main .panel p,body[data-screen=team] dialog p{color:var(--team-muted);font-size:13px}
+body[data-screen=team] main label,body[data-screen=team] dialog label{font:650 12px/1.4 system-ui;color:#434e40;gap:6px}
+body[data-screen=team] main input,body[data-screen=team] dialog input{width:100%;min-width:0;min-height:44px;padding:11px 12px;border:1px solid #d9ddd2;border-radius:9px;background:#f6f7f2;color:var(--team-ink);font:400 14px/1.4 system-ui;box-shadow:none}
+body[data-screen=team] input[type=file]{font-size:12px;padding:6px;cursor:pointer}
+body[data-screen=team] input[type=file]::file-selector-button{border:1px solid #d9ddd2;background:var(--team-surface);color:#343b32;border-radius:7px;padding:7px 10px;margin-right:8px;font:600 12px system-ui;cursor:pointer}
+body[data-screen=team] main button,body[data-screen=team] dialog button{min-height:42px;border:1px solid #d9ddd2;border-radius:9px;background:var(--team-surface);color:#343b32;box-shadow:none;font:650 13px/1.35 system-ui;padding:10px 14px}
+body[data-screen=team] main button.primary,body[data-screen=team] dialog button.primary{background:var(--team-accent);border-color:var(--team-accent);color:#fff}
+body[data-screen=team] main button.primary:hover,body[data-screen=team] dialog button.primary:hover{background:#426447;border-color:#426447}
+body[data-screen=team] main button.danger{background:var(--team-surface);color:#84462e;border-color:#d5b0a0}
+body[data-screen=team] main button.danger:hover{background:#f1dcd2;border-color:#b98672}
+body[data-screen=team] main .panel>.controls:last-child{margin-top:3px;gap:8px}
+body[data-screen=team] main .panel>.controls:last-child .primary{flex:1}
+body[data-screen=team] button:focus-visible,body[data-screen=team] input:focus-visible{outline:2px solid #45664a;outline-offset:2px}
+body[data-screen=team] dialog{background:var(--team-surface);color:var(--team-ink);border:1px solid var(--team-line);border-radius:15px;box-shadow:0 18px 60px #262a2526;padding:0;max-height:calc(100dvh - 24px);overflow:auto}
+body[data-screen=team] dialog::backdrop{background:#262a256b}
+body[data-screen=team] dialog .quick-form{padding:22px;gap:15px}
+body[data-screen=team] dialog .quick-header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+body[data-screen=team] footer{background:var(--team-bg);color:var(--team-muted);border-color:var(--team-line)}
+@media(max-width:650px){body[data-screen=team] main{padding:12px 12px 24px}body[data-screen=team] main .heading{align-items:stretch;flex-direction:column}body[data-screen=team] main .grid{gap:12px}body[data-screen=team] main .panel{padding:16px}body[data-screen=team] main .heading button{width:100%}body[data-screen=team] dialog .quick-form{padding:16px}}
