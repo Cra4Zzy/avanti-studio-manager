@@ -78,3 +78,9 @@ Separate Abwesenheitsansicht aus Navigation entfernt; vorhandene Zeitsperren ble
 
 ## v0.19 — Schließtage
 - Team: Betriebszeiten & Schließtage. Gesetzliche Feiertage Baden-Württemberg automatisch berechnet, einzelne Ausnahmen nur bei rechtlich zulässiger Öffnung. Quelle: https://im.baden-wuerttemberg.de/de/service/feiertage/ . Zusätzliche Schließzeiten bis 365 Tage im Voraus mit Konfliktwarnung; keine automatische Stornierung. Zentrale Sperren gelten auch für neu angelegte Mitglieder. Freigabe lässt individuelle Sperren bestehen. Lokaler Pilot.
+
+
+## v0.20 — erster Backend-Login
+- Bestehendes, separates Supabase-Projekt für Avanti (EU, Irland). Foundation-Migration auf dem Server vorhanden: sieben Tabellen, RLS aktiv, kein anonymer Direktzugriff, keine direkten Client-Schreibrechte; PostgreSQL-Exclusion-Constraint für gleichzeitige bestätigte Einträge. Keine Kundendaten oder Benutzer importiert.
+- `login.html` ist ein eigenständiger echter Auth-Test: E-Mail/Passwort via Supabase Auth, anschließend Prüfung der aktiven Salonzuordnung über die geschützte Data API. Nur öffentlich nutzbarer Publishable Key, keine geheimen Schlüssel. Token nur im Arbeitsspeicher; erneuter Login nach Ablauf/Reload. Keine Selbstregistrierung in der Oberfläche. Der lokale Kalender bleibt getrennt und unverändert; der Login schützt noch keinen produktiven Kalender. Keine Accounts angelegt, End-to-end-Anmeldung erst nach autorisierter Kontoanlage überprüfbar.
+- Nächster Schritt: erstes freigegebenes Inhaberkonto in Auth anlegen (Einladung durch Administrator, keine Zugangsdaten im Repo) und Mitgliedschaft `owner` in salon_members zuordnen. Schema und serverseitige RPCs für freie Slots, manuelle Termine ohne Leistung, überlappende Urlaubs-/Schließtage, Mitarbeiterverwaltung und sichere Buchungen aktualisieren. Erst danach echten Kalender verbinden. Keine Echtdaten in die Demo eingeben.
