@@ -107,9 +107,10 @@ export function quickDay(state,{day,staffId},now=new Date()){
  const min=Math.min(shift?.start??s.start,...appointments.map(a=>a.start)),max=Math.max(shift?.end??s.end,...appointments.map(a=>a.end));
  const result=[];for(let start=Math.floor(min/15)*15;start<max;start+=15){
   const end=start+15,overlaps=a=>start<a.end&&a.start<end;
-  const appointment=appointments.find(overlaps),block=blocks.find(a=>a.wholeDay===true)||blocks.find(overlaps);
+  const appointment=appointments.find(overlaps),block=blocks.find(a=>a.vacationId)||blocks.find(a=>a.wholeDay===true)||blocks.find(overlaps);
   let status='unavailable';
   if(appointment)status='booked';
+  else if(block?.vacationId)status='vacation';
   else if(block?.wholeDay===true)status='wholeDay';
   else if(block)status=block.quickSlot===true&&block.start===start&&block.end===end&&day>=today(now)&&day<=addDays(today(now),90)?'quick':'absence';
   else if(free.has(start))status='free';
@@ -129,6 +130,7 @@ export function nextWorkday(state,staffId,now=new Date()){
 }
 export function toggleWholeDay(state,{day,staffId},now=new Date(),newId=()=>globalThis.crypto.randomUUID()){
  if(!validDay(day)||day<today(now)||day>addDays(today(now),90)||!state.staff.some(s=>s.id===staffId&&s.archived!==true))throw Error('Bitte einen gültigen Tag auswählen.');
+ if(state.absences.some(a=>a.day===day&&a.staffId===staffId&&a.vacationId))throw Error('Bitte den Urlaub über Urlaub / mehrere Tage verwalten.');
  const own=state.absences.find(a=>a.day===day&&a.staffId===staffId&&a.wholeDay===true);
  if(own)return {...state,absences:state.absences.filter(a=>a.id!==own.id)};
  return {...state,absences:[...state.absences,{id:newId(),day,staffId,start:0,end:1440,reason:'Tag gesperrt',wholeDay:true}]};
@@ -150,4 +152,23 @@ export function setStaffArchived(state,id,archived,now=new Date()){
   if(state.absences.some(a=>a.quickSlot===true&&upcoming(a)))throw Error('Bitte zuerst die offenen Telefon-/Salonslots im Kalender klären und freigeben.');
  }
  return {...state,staff:state.staff.map(s=>s.id===id?{...s,archived:Boolean(archived)}:s)};
+}
+
+export function vacationRanges(state,staffId){
+ const groups=new Map();for(const a of state.absences){if(!a.vacationId||a.staffId!==staffId)continue;const v=groups.get(a.vacationId);if(v){if(a.day<v.start)v.start=a.day;if(a.day>v.end)v.end=a.day;}else groups.set(a.vacationId,{id:a.vacationId,start:a.day,end:a.day});}return [...groups.values()].sort((a,b)=>a.start.localeCompare(b.start));
+}
+export function vacationConflicts(state,{staffId,start,end},now=new Date()){
+ const upcoming=a=>a.staffId===staffId&&a.day>=start&&a.day<=end&&(a.day>today(now)||a.day===today(now)&&a.end>berlinMinute(now));
+ return [...state.appointments.filter(a=>a.status==='confirmed'&&upcoming(a)),...state.absences.filter(a=>a.quickSlot===true&&upcoming(a))].sort((a,b)=>a.day.localeCompare(b.day)||a.start-b.start);
+}
+export function addVacation(state,{staffId,start,end,acknowledge=false},now=new Date(),newId=()=>globalThis.crypto.randomUUID()){
+ if(!activeStaff(state).some(s=>s.id===staffId)||!validDay(start)||!validDay(end)||start<today(now)||end<start||end>addDays(today(now),365))throw Error('Bitte einen gültigen Zeitraum innerhalb der nächsten 365 Tage auswählen.');
+ if(vacationRanges(state,staffId).some(v=>start<=v.end&&v.start<=end))throw Error('In diesem Zeitraum liegt bereits Urlaub. Bitte zuerst den bestehenden Zeitraum verwalten.');
+ if(vacationConflicts(state,{staffId,start,end},now).length&&!acknowledge)throw Error('Bestehende Termine oder Telefon-/Salonslots müssen berücksichtigt werden.');
+ const vacationId=newId(),blocks=[];for(let d=start;d<=end;d=addDays(d,1))blocks.push({id:vacationId+':'+d,vacationId,staffId,day:d,start:0,end:1440,reason:'Urlaub',wholeDay:true});
+ return {...state,absences:[...state.absences,...blocks]};
+}
+export function removeVacation(state,{staffId,id},now=new Date()){
+ if(!activeStaff(state).some(s=>s.id===staffId)||!vacationRanges(state,staffId).some(v=>v.id===id))throw Error('Urlaub nicht gefunden.');
+ return {...state,absences:state.absences.filter(a=>a.staffId!==staffId||a.vacationId!==id||a.day<today(now))};
 }

@@ -60,3 +60,7 @@ Separate Abwesenheitsansicht aus Navigation entfernt; vorhandene Zeitsperren ble
 ## v0.14 — Gesamtkalender und Arbeitszeiten
 - Alle aktiven Mitarbeiter im Tagesraster nebeneinander, gleiches 15-Minuten-Raster, Tageswechsel und Wochenleiste; sowohl Sperren als auch Telefontermine direkt in der Gesamtansicht. Klick auf Profil führt zum persönlichen Kalender. Horizontales Scrollen auf kleinen Bildschirmen.
 - Teamprofil: pro Wochentag Dienst an/aus, individuelle Start-/Endzeit und optionale Pause, wiederkehrend. Bestehende Demo-Schichten bleiben bis zur Bearbeitung erhalten. Neue Buchungen, persönliche Kalender und Gesamtübersicht nutzen dieselbe Schichtlogik. Änderungen, die bestehende künftige Termine oder Telefonsperren ungültig machen, werden abgelehnt. Keine produktive Backend-Anbindung.
+
+
+## v0.16 — Urlaub über mehrere Tage
+- Persönlicher Kalender und Gesamtkalender: Urlaub / mehrere Tage, Mitarbeiterin und erster/letzter Tag (inklusive) auswählen. Bis zu 365 Tage im Voraus. Urlaub blockiert sämtliche neuen Buchungen, auch bei späteren Änderungen der Dienstzeiten. Bestehende Kunden- und Telefonslots bleiben erhalten und werden vor Bestätigung angezeigt. Urlaub lässt sich als Zeitraum ab heute freigeben; unabhängige Sperren werden nicht entfernt. Nur lokaler Pilot.
