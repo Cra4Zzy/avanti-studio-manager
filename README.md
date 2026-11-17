@@ -64,3 +64,8 @@ Separate Abwesenheitsansicht aus Navigation entfernt; vorhandene Zeitsperren ble
 
 ## v0.16 — Urlaub über mehrere Tage
 - Persönlicher Kalender und Gesamtkalender: Urlaub / mehrere Tage, Mitarbeiterin und erster/letzter Tag (inklusive) auswählen. Bis zu 365 Tage im Voraus. Urlaub blockiert sämtliche neuen Buchungen, auch bei späteren Änderungen der Dienstzeiten. Bestehende Kunden- und Telefonslots bleiben erhalten und werden vor Bestätigung angezeigt. Urlaub lässt sich als Zeitraum ab heute freigeben; unabhängige Sperren werden nicht entfernt. Nur lokaler Pilot.
+
+
+## v0.17 — Termine verschieben und absagen
+- Gebuchten Slot im Einzel- oder Gesamtkalender wählen: kompakte Termindetails, Verschieben, Kontaktdaten bearbeiten, Absagen. Beim Verschieben Datum und Mitarbeiterin auswählen; angebotene Startzeiten berücksichtigen die ursprüngliche Dauer, Dienstzeiten, Pausen, Sperren und andere Termine. Alte Belegung wird erst nach erfolgreicher Speicherung freigegeben. IDs, Kontaktdaten und Buchungsquelle bleiben erhalten.
+- Absage mit separater Bestätigung, Status bleibt in der Historie; Rückgängig (8 Sekunden) für Absage und Verschiebung, nur wenn ursprüngliche Zeit weiterhin verfügbar ist. Keine automatischen Kundenbenachrichtigungen; lokaler Pilot.

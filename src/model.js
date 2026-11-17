@@ -172,3 +172,21 @@ export function removeVacation(state,{staffId,id},now=new Date()){
  if(!activeStaff(state).some(s=>s.id===staffId)||!vacationRanges(state,staffId).some(v=>v.id===id))throw Error('Urlaub nicht gefunden.');
  return {...state,absences:state.absences.filter(a=>a.staffId!==staffId||a.vacationId!==id||a.day<today(now))};
 }
+
+/* Appointment actions preserve the identity, source, duration and contact data. */
+export function moveAppointment(state,id,{day,staffId,start},now=new Date()){
+ const old=state.appointments.find(a=>a.id===id&&a.status==='confirmed');if(!old)throw Error('Termin nicht mehr vorhanden.');
+ return book(state,{...old,day,staffId,start,durationMinutes:old.end-old.start},now);
+}
+export function restoreAppointment(state,id,now=new Date()){
+ const old=state.appointments.find(a=>a.id===id&&a.status==='cancelled');if(!old)throw Error('Abgesagter Termin nicht gefunden.');
+ const valid=freeSlots(state,{day:old.day,staffId:old.staffId,durationMinutes:old.end-old.start,serviceId:old.serviceId,now}).some(t=>t.start===old.start);
+ if(!valid)throw Error('Der ursprüngliche Zeitraum ist nicht mehr verfügbar.');
+ return {...state,appointments:state.appointments.map(a=>a.id===id?{...a,status:'confirmed'}:a)};
+}
+export function updateAppointmentContact(state,id,input){
+ const old=state.appointments.find(a=>a.id===id&&a.status==='confirmed');if(!old)throw Error('Termin nicht mehr vorhanden.');
+ const name=String(input.name??old.name??'').trim().slice(0,80)||(old.source==='manual'?'Telefontermin':'');if(!name)throw Error('Bitte einen Testnamen eingeben.');
+ const phone=String(input.phone??old.phone??'').trim();if(phone.length>40||phone&&!/^[+0-9()\s./-]+$/.test(phone))throw Error('Bitte eine gültige Telefonnummer eingeben.');
+ return {...state,appointments:state.appointments.map(a=>a.id===id?{...a,name,phone}:a)};
+}
