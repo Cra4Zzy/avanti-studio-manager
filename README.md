@@ -55,3 +55,8 @@ Separate Abwesenheitsansicht aus Navigation entfernt; vorhandene Zeitsperren ble
 ## v0.13 — Telefontermine
 - Kalender: Standardmodus Zeit sperren (ein Klick = 15 Minuten) unverändert. Modus Telefontermin: freie Startzeit wählen, Dauer aus durchgehend verfügbaren 15-Minuten-Schritten auswählen, optional Testname und Testtelefonnummer speichern. Nach dem Speichern zurück zum Sperrmodus. Terminfarbe unterscheidet Telefontermine von Zeitsperren und Online-Buchungen; Name sichtbar, Telefonnummer nur im internen Bearbeitungsdialog. Alle Buchungswege teilen die Kapazitätsprüfung. Keine echten personenbezogenen Daten im Pilot.
 - KI-Telefonassistent ausdrücklich aus dem Projektumfang gestrichen. Gemeinsames Backend, Authentifizierung und produktive Datensicherheit bleiben offen.
+
+
+## v0.14 — Gesamtkalender und Arbeitszeiten
+- Alle aktiven Mitarbeiter im Tagesraster nebeneinander, gleiches 15-Minuten-Raster, Tageswechsel und Wochenleiste; sowohl Sperren als auch Telefontermine direkt in der Gesamtansicht. Klick auf Profil führt zum persönlichen Kalender. Horizontales Scrollen auf kleinen Bildschirmen.
+- Teamprofil: pro Wochentag Dienst an/aus, individuelle Start-/Endzeit und optionale Pause, wiederkehrend. Bestehende Demo-Schichten bleiben bis zur Bearbeitung erhalten. Neue Buchungen, persönliche Kalender und Gesamtübersicht nutzen dieselbe Schichtlogik. Änderungen, die bestehende künftige Termine oder Telefonsperren ungültig machen, werden abgelehnt. Keine produktive Backend-Anbindung.

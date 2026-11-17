@@ -9,16 +9,34 @@ export function availableSlots({shifts,blocks=[],durationMinutes,stepMinutes=15,
  const out=[];for(const w of shifts){for(let start=w.start+Math.ceil(Math.max(0,notBefore-w.start)/stepMinutes)*stepMinutes;start+durationMinutes<=Math.min(w.end,notAfter);start+=stepMinutes){const end=start+durationMinutes;if(!blocks.some(b=>start<b.end&&b.start<end))out.push({start,end});}}
  return out;
 }
+// Recurring weekday schedules with backwards-compatible defaults.
+export function weekdayShift(member,dow){
+ if(!member)return null;
+ if(member.weeklySchedule)return member.weeklySchedule[dow]||null;
+ return member.days.includes(dow)?{start:member.start,end:member.end,breakStart:member.breakStart,breakEnd:member.breakEnd}:null;
+}
+export function dayShift(member,date){return validDay(date)?weekdayShift(member,new Date(date+'T00:00:00Z').getUTCDay()):null;}
+export function setWeeklySchedule(state,id,schedule,now=new Date()){
+ const member=activeStaff(state).find(s=>s.id===id);if(!member)throw Error('Profil nicht gefunden.');
+ const plan={};for(let d=0;d<7;d++){const v=schedule[d];if(!v)continue;
+ const {start,end,breakStart,breakEnd}=v;
+ if(![start,end,breakStart,breakEnd].every(n=>Number.isInteger(n)&&n%15===0)||start<0||end>1440||start>=end||breakStart<start||breakEnd> end||breakEnd<breakStart)throw Error('Arbeitszeit oder Pause ungültig. Bitte 15-Minuten-Schritte verwenden.');
+ plan[d]={start,end,breakStart,breakEnd};}
+ const date=today(now),minute=berlinMinute(now);
+ const conflicts=a=>{if(a.staffId!==id||a.day<date||a.day===date&&a.end<=minute)return false;const v=plan[new Date(a.day+'T00:00:00Z').getUTCDay()];return !v||a.start<v.start||a.end>v.end||(v.breakEnd>v.breakStart&&a.start<v.breakEnd&&v.breakStart<a.end);};
+ if(state.appointments.some(a=>a.status==='confirmed'&&conflicts(a))||state.absences.some(a=>a.quickSlot===true&&conflicts(a)))throw Error('Die neuen Arbeitszeiten überschneiden sich mit bestehenden Terminen oder Telefon-/Salonslots. Bitte zuerst im Kalender klären.');
+ return {...state,staff:state.staff.map(s=>s.id===id?{...s,weeklySchedule:plan}:s)};
+}
 // All booking paths share the same interval validation.
 export function validDay(day){return typeof day==='string'&&/^\d{4}-\d\d-\d\d$/.test(day)&&Number.isFinite(Date.parse(day+'T00:00:00Z'))&&new Date(day+'T00:00:00Z').toISOString().slice(0,10)===day;}
 export function freeSlots(state,{day,staffId,durationMinutes=15,serviceId=null,excludeId=null,now=new Date()}){
- const s=state.staff.find(x=>x.id===staffId);
- if(!validDay(day)||day<today(now)||day>addDays(today(now),90)||!s||s.archived===true||!s.days.includes(new Date(day+'T00:00:00Z').getUTCDay())||!Number.isInteger(durationMinutes)||durationMinutes<15||durationMinutes>480||durationMinutes%15!==0)return [];
+ const s=state.staff.find(x=>x.id===staffId),shift=dayShift(s,day);
+ if(!validDay(day)||day<today(now)||day>addDays(today(now),90)||!s||s.archived===true||!shift||!Number.isInteger(durationMinutes)||durationMinutes<15||durationMinutes>480||durationMinutes%15!==0)return [];
  if(serviceId&&(!state.services.some(v=>v.id===serviceId)||!s.services.includes(serviceId)))return [];
  const blocks=[...state.appointments.filter(a=>a.status==='confirmed'&&a.day===day&&a.staffId===staffId&&a.id!==excludeId),...state.absences.filter(a=>a.day===day&&a.staffId===staffId&&a.id!==excludeId)];
- if(s.breakEnd>s.breakStart)blocks.push({start:s.breakStart,end:s.breakEnd});
+ if(shift.breakEnd>shift.breakStart)blocks.push({start:shift.breakStart,end:shift.breakEnd});
  let earliest=0;if(day===today(now)){const [h,m]=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(now).split(':').map(Number);earliest=h*60+m+1;}
- return availableSlots({shifts:[{start:s.start,end:s.end}],blocks,durationMinutes,notBefore:earliest});
+ return availableSlots({shifts:[{start:shift.start,end:shift.end}],blocks,durationMinutes,notBefore:earliest});
 }
 export function slots(state,input){
  const service=state.services.find(x=>x.id===input.serviceId);if(!service)return [];
@@ -82,11 +100,11 @@ export function toggleQuickSlot(state,{day,staffId,start},now=new Date(),newId=(
 }
 export function quickDay(state,{day,staffId},now=new Date()){
  const s=state.staff.find(x=>x.id===staffId);if(!s||!validDay(day))return [];
- const working=s.days.includes(new Date(day+'T00:00:00Z').getUTCDay());
+ const shift=dayShift(s,day),working=Boolean(shift);
  const free=new Set(freeSlots(state,{day,staffId,now,durationMinutes:15}).map(a=>a.start));
  const appointments=state.appointments.filter(a=>a.day===day&&a.staffId===staffId&&a.status==='confirmed');
  const blocks=state.absences.filter(a=>a.day===day&&a.staffId===staffId);
- const min=Math.min(s.start,...appointments.map(a=>a.start)),max=Math.max(s.end,...appointments.map(a=>a.end));
+ const min=Math.min(shift?.start??s.start,...appointments.map(a=>a.start)),max=Math.max(shift?.end??s.end,...appointments.map(a=>a.end));
  const result=[];for(let start=Math.floor(min/15)*15;start<max;start+=15){
   const end=start+15,overlaps=a=>start<a.end&&a.start<end;
   const appointment=appointments.find(overlaps),block=blocks.find(a=>a.wholeDay===true)||blocks.find(overlaps);
@@ -95,8 +113,8 @@ export function quickDay(state,{day,staffId},now=new Date()){
   else if(block?.wholeDay===true)status='wholeDay';
   else if(block)status=block.quickSlot===true&&block.start===start&&block.end===end&&day>=today(now)&&day<=addDays(today(now),90)?'quick':'absence';
   else if(free.has(start))status='free';
-  else if(!working||start<s.start||end>s.end)status='off';
-  else if(s.breakEnd>s.breakStart&&start<s.breakEnd&&s.breakStart<end)status='pause';
+  else if(!working||start<shift.start||end>shift.end)status='off';
+  else if(shift.breakEnd>shift.breakStart&&start<shift.breakEnd&&shift.breakStart<end)status='pause';
   else if(day<today(now)||day===today(now)&&start<=berlinMinute(now))status='past';
   result.push({start,end,status,appointmentId:appointment?.id,blockId:block?.id,label:appointment?.name||block?.reason||'',source:appointment?.source});
  }return result;
@@ -105,8 +123,8 @@ export function quickDay(state,{day,staffId},now=new Date()){
 function berlinMinute(now){const [h,m]=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(now).split(':').map(Number);return h*60+m;}
 export function nextWorkday(state,staffId,now=new Date()){
  const s=state.staff.find(x=>x.id===staffId),d=today(now);
- if(!s||!s.days.length)return d;
- for(let i=0;i<8;i++){const date=addDays(d,i);if(s.days.includes(new Date(date+'T00:00:00Z').getUTCDay())&&(i>0||berlinMinute(now)<s.end))return date;}
+ if(!s)return d;
+ for(let i=0;i<8;i++){const date=addDays(d,i),shift=dayShift(s,date);if(shift&&(i>0||berlinMinute(now)<shift.end))return date;}
  return d;
 }
 export function toggleWholeDay(state,{day,staffId},now=new Date(),newId=()=>globalThis.crypto.randomUUID()){
