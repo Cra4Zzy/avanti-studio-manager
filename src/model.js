@@ -54,7 +54,7 @@ export function upgradeDemo(state){
  if(!state||state.version!==1||!Array.isArray(state.staff))return defaults;
  const existing=state.staff.map(member=>{const d=defaults.staff.find(x=>x.id===member.id);if(!d)return member;return {...member,name:legacy.includes(member.name)&&member.name===legacy[Number(member.id.slice(1))]?d.name:member.name,specialty:legacy.includes(member.name)&&member.specialty==='Schnitt & Styling'?d.specialty:member.specialty,demoPortrait:d.demoPortrait};});
  for(const d of defaults.staff)if(!existing.some(x=>x.id===d.id))existing.push({...d,services:state.services.map(v=>v.id)});
- return {...state,staff:existing};
+ return {...state,staff:existing.map(member=>({...member,services:state.services.map(v=>v.id)}))};
 }
 
  // Validate every day before returning a new state; never partially save a range.

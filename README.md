@@ -38,3 +38,10 @@ Mitarbeiterin wählen, Wochentag wählen, freie 15-Minuten-Slots mit einem Klick
 
 ## v0.9 — Kalender und Team & Leistungen
 Separate Abwesenheitsansicht aus Navigation entfernt; vorhandene Zeitsperren bleiben gespeichert und im Kalender sichtbar. Ganztagsschalter blockiert alle neuen Buchungen der gewählten Mitarbeiterin, ohne vorhandene Termine oder Einzelzeitsperren zu löschen; erneutes Anklicken hebt nur diese Tagessperre auf. Start am nächsten Arbeitstag nach Feierabend, vergangene Slots beschriftet. Lokaler Pilot.
+
+
+## v0.10 — Teamprofile und zentrale Leistungen
+- Navigation: Kalender und Team. Team bearbeitet nur Name, Schwerpunkt und Profilbild. Arbeits-/Pausenzeiten bleiben intern erhalten. Kein Preis-, Leistungs- oder Arbeitszeitformular im Mitarbeiterbereich.
+- Jede Mitarbeiterin bietet alle zentral hinterlegten Leistungen an; auch bisherige lokale Profile werden entsprechend aktualisiert. Termine, Sperren und Fotos bleiben erhalten.
+- Vereinbarter Buchungsablauf: Leistung auf Website wählen, nur durchgehend freie Startzeiten anzeigen, vollständige Dauer in 15-Minuten-Schritten reservieren. Beispiel Ansatzfarbe 90 Minuten: 14:00 bis 15:30 (6 Slots).
+- Vorläufige Katalogplanung zur Salonfreigabe: Herren- und Kinderhaarschnitt je 30 Min., Damen-Trockenhaarschnitt 30 Min., Waschen/Schneiden/Föhnen 60 Min., Ansatzfarbe 90 Min., Komplettfarbe 120 Min., Strähnen 150 Min., Balayage 180 Min. Bestehender Demo-Katalog bleibt bis zur Abstimmung unverändert. Keine Preisfestlegung. Gemeinsames produktives Backend steht aus.
