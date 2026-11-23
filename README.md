@@ -84,3 +84,12 @@ Separate Abwesenheitsansicht aus Navigation entfernt; vorhandene Zeitsperren ble
 - Bestehendes, separates Supabase-Projekt für Avanti (EU, Irland). Foundation-Migration auf dem Server vorhanden: sieben Tabellen, RLS aktiv, kein anonymer Direktzugriff, keine direkten Client-Schreibrechte; PostgreSQL-Exclusion-Constraint für gleichzeitige bestätigte Einträge. Keine Kundendaten oder Benutzer importiert.
 - `login.html` ist ein eigenständiger echter Auth-Test: E-Mail/Passwort via Supabase Auth, anschließend Prüfung der aktiven Salonzuordnung über die geschützte Data API. Nur öffentlich nutzbarer Publishable Key, keine geheimen Schlüssel. Token nur im Arbeitsspeicher; erneuter Login nach Ablauf/Reload. Keine Selbstregistrierung in der Oberfläche. Der lokale Kalender bleibt getrennt und unverändert; der Login schützt noch keinen produktiven Kalender. Keine Accounts angelegt, End-to-end-Anmeldung erst nach autorisierter Kontoanlage überprüfbar.
 - Nächster Schritt: erstes freigegebenes Inhaberkonto in Auth anlegen (Einladung durch Administrator, keine Zugangsdaten im Repo) und Mitgliedschaft `owner` in salon_members zuordnen. Schema und serverseitige RPCs für freie Slots, manuelle Termine ohne Leistung, überlappende Urlaubs-/Schließtage, Mitarbeiterverwaltung und sichere Buchungen aktualisieren. Erst danach echten Kalender verbinden. Keine Echtdaten in die Demo eingeben.
+
+
+## v0.21 – Bedienungsoptimierung (23.11.2026)
+- Freien 15-Minuten-Slot antippen: nun direkte Wahl zwischen **Telefontermin** und **15 Minuten sperren**. Bereits gesetzte schnelle Sperren lassen sich weiterhin unmittelbar aufheben.
+- Telefontermin: Behandlung aus dem gemeinsamen sechsteiligen Testkatalog wählen; die hinterlegte Dauer wird automatisch eingetragen. Alternativ sind individuelle Dauern ohne Behandlung möglich.
+- Sechs Testleistungen synchron zur Website-Demo; Dauer-Angaben werden auf dem 15-Minuten-Raster geführt. Zwei 20-Minuten-Demo-Dauern sind deshalb 30 Minuten. **Freigabe von Preisen und Zeiten durch den Salon erforderlich.**
+- Vorhandene lokale Termine und Mitarbeiterprofile bleiben beim Katalog-Upgrade erhalten; keine produktiven Kontaktdaten eingeben.
+- Die mobile Slot-Auswahl wurde nicht durch eine Supabase-Anbindung ersetzt. Kalender, Buchungen, Teamverwaltung und Website bleiben noch voneinander getrennte Testoberflächen.
+- Zusätzliche Modelltests: Katalogkonsistenz, Upgrade ohne Verlust bestehender Termine und vollständige Blockierung der Behandlungsdauer.
