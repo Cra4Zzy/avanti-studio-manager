@@ -12,7 +12,7 @@ const addDay=(d,n)=>{const date=new Date(d+"T00:00:00Z");date.setUTCDate(date.ge
 const isDate=d=>/^\d{4}-\d\d-\d\d$/.test(d)&&new Date(d+"T00:00:00Z").toISOString().slice(0,10)===d;
 const clock=t=>String(Math.floor(t/60)).padStart(2,"0")+":"+String(t%60).padStart(2,"0");
 const label=d=>new Intl.DateTimeFormat("de-DE",{weekday:"long",day:"numeric",month:"long",year:"numeric",timeZone:"UTC"}).format(new Date(d+"T00:00:00Z"));
-let token="",refresh="",expires=0,day=today(),snapshot=null,poll=null,busy=false,staffFilter="all",filterInitialized=false,lastLoadedDay=null,loadError="";
+let token="",refresh="",expires=0,day=today(),snapshot=null,poll=null,busy=false,staffFilter="all",filterInitialized=false,lastLoadedDay=null,loadError="",sessionGeneration=0;
 const toast=s=>{const x=document.querySelector("#toast");x.textContent=s;x.classList.add("show");clearTimeout(x._timer);x._timer=setTimeout(()=>x.classList.remove("show"),3800)};
 const errorLabel=e=>({"slot_taken":"Der Zeitraum wurde inzwischen belegt. Bitte andere Zeit wählen.","invalid_day":"Datum ungültig.","time_in_past":"Diese Uhrzeit liegt bereits in der Vergangenheit.","outside_working_hours":"Die Behandlung passt nicht in die Arbeitszeit oder Pause.","login_required":"Bitte neu anmelden.","session_invalid":"Sitzung abgelaufen. Bitte neu anmelden.","service_unavailable":"Leistung nicht verfügbar.","rate_limited":"Zu viele Anfragen.","request_failed":"Serveranfrage fehlgeschlagen."}[e.message]||e.message);
 async function request(action,{method="GET",body=null,session=token}={}){
@@ -26,19 +26,20 @@ async function authenticate(email,password){
  if(!token)throw Error("Anmeldung fehlgeschlagen.");
 }
 async function refreshAuth(){if(Date.now()<expires-60000)return;if(!refresh)throw Error("session_invalid");
- const r=await fetch("https://xvxgqyrykkxdfadppoor.supabase.co/auth/v1/token?grant_type=refresh_token",{method:"POST",headers:{"apikey":KEY,"Content-Type":"application/json"},body:JSON.stringify({refresh_token:refresh}),cache:"no-store"});
- if(!r.ok)throw Error("session_invalid");const data=await r.json();token=data.access_token;refresh=data.refresh_token;expires=Date.now()+Number(data.expires_in||3000)*1000;
+ const generation=sessionGeneration;const r=await fetch("https://xvxgqyrykkxdfadppoor.supabase.co/auth/v1/token?grant_type=refresh_token",{method:"POST",headers:{"apikey":KEY,"Content-Type":"application/json"},body:JSON.stringify({refresh_token:refresh}),cache:"no-store"});
+ if(!r.ok)throw Error("session_invalid");const data=await r.json();if(generation!==sessionGeneration)throw Error("session_invalid");token=data.access_token;refresh=data.refresh_token;expires=Date.now()+Number(data.expires_in||3000)*1000;
 }
 function login(){
- token="";refresh="";expires=0;snapshot=null;lastLoadedDay=null;filterInitialized=false;staffFilter="all";clearInterval(poll);logout.hidden=true;account.textContent="";
+ sessionGeneration++;token="";refresh="";expires=0;snapshot=null;lastLoadedDay=null;loadError="";filterInitialized=false;staffFilter="all";clearInterval(poll);logout.hidden=true;account.textContent="";
  root.innerHTML='<div class="login-shell"><div class="login-intro"><div><span class="eyebrow">AVANTI / STUDIO MANAGER</span><h1>Dein Salon.<br>Dein Kalender.</h1></div><p>Alle Termine an einem Ort. Eintragen, sperren und freie Zeiten sofort über den gemeinsamen Server abgleichen.</p></div><div class="login-panel"><span class="eyebrow">GESCHÜTZTER MITARBEITERZUGANG</span><h2>Willkommen zurück.</h2><p>Melde dich mit deinem von der Salonleitung freigegebenen Konto an. Es werden keine Testpasswörter angelegt.</p><form id="login-form"><label>E-Mail-Adresse<input name="email" type="email" autocomplete="username" required></label><label>Passwort<input name="password" type="password" autocomplete="current-password" required></label><button class="primary">Verbinden & Kalender öffnen</button><div id="login-error" class="status-text" role="alert"></div></form><p class="subtle">Noch kein Konto? Die Salonleitung muss es vor der ersten Nutzung freigeben. Die lokale Demo bleibt separat verfügbar.</p></div></div>';
  root.querySelector("#login-form").addEventListener("submit",async e=>{e.preventDefault();const f=e.currentTarget,b=f.querySelector("button"),status=f.querySelector("#login-error");b.disabled=true;status.textContent="";try{await authenticate(f.elements.email.value,f.elements.password.value);await load();poll=setInterval(()=>{if(token&&!dialog.open&&!document.hidden)load(true)},25000)}catch(err){status.textContent=errorLabel(err);token="";refresh="";expires=0}finally{b.disabled=false}});
 }
 async function load(silent=false){
- if(busy)return;busy=true;const requestedDay=day;
+ if(busy)return;busy=true;const requestedDay=day,generation=sessionGeneration;
  try{await refreshAuth();const x=await request("studio",{body:{day}});
+ if(generation!==sessionGeneration||!token)return;
  snapshot=x;lastLoadedDay=requestedDay;loadError="";logout.hidden=false;account.textContent=x.user.email+" · "+x.user.role;render(silent);
- }catch(e){if(["session_invalid","login_required","forbidden"].includes(e.message)){login();return;}loadError=errorLabel(e);if(lastLoadedDay&&snapshot){day=lastLoadedDay;render(true);}if(!silent)toast(loadError);if(!snapshot)throw e;}
+ }catch(e){if(generation!==sessionGeneration)return;if(["session_invalid","login_required","forbidden"].includes(e.message)){if(!snapshot)throw e;login();return;}loadError=errorLabel(e);if(lastLoadedDay&&snapshot){day=lastLoadedDay;render(true);}if(!silent)toast(loadError);if(!snapshot)throw e;}
  finally{busy=false}
 }
 function blocked(staff,t,end){
@@ -51,7 +52,7 @@ function blocked(staff,t,end){
 }
 function freeFor(staff,t,len){if(t+len>1440)return false;for(let at=t;at<t+len;at+=15)if(blocked(staff,at,at+15)!=="free")return false;return true;}
 function render(silent=false){
- if(dialog.open||!snapshot)return;
+ if(dialog.open||!snapshot)return; if(silent&&root.querySelector(".workspace-card")&&["INPUT","SELECT"].includes(document.activeElement?.tagName)&&!loadError)return;
  const all=snapshot.staff,previous=root.querySelector(".calendar-scroll"),scrollTop=previous?.scrollTop||0,scrollLeft=previous?.scrollLeft||0;
  if(!filterInitialized){staffFilter=matchMedia("(max-width: 700px)").matches?(all[0]?.code||"all"):"all";filterInitialized=true;}
  if(staffFilter!=="all"&&!all.some(x=>x.code===staffFilter))staffFilter="all";
@@ -75,9 +76,9 @@ function render(silent=false){
  function navigate(d){if(busy||d<today()||d>addDay(today(),365))return;day=d;load();}
  root.querySelectorAll("[data-step]").forEach(b=>b.onclick=()=>navigate(addDay(day,Number(b.dataset.step))));
  root.querySelectorAll("[data-date]").forEach(b=>b.onclick=()=>navigate(b.dataset.date));
- root.querySelector("#date").onchange=e=>{if(isDate(e.target.value))navigate(e.target.value)};
+ root.querySelector("#date").onchange=e=>{if(busy){e.target.value=day;return;}if(isDate(e.target.value))navigate(e.target.value)};
  root.querySelector("#refresh").onclick=()=>load();
- root.querySelector("#staff-filter").onchange=e=>{staffFilter=e.target.value;render(true);root.querySelector("#staff-filter").focus()};
+ root.querySelector("#staff-filter").onchange=e=>{staffFilter=e.target.value;e.target.blur();render(true);root.querySelector("#staff-filter").focus()};
  root.querySelectorAll("[data-free]").forEach(b=>b.onclick=()=>{if(!busy)choice(b.dataset.staff,Number(b.dataset.free))});
  root.querySelectorAll("[data-entry]").forEach(b=>b.onclick=()=>{if(!busy)showEntry(b.dataset.entry)});
  if(silent&&previous){const current=root.querySelector(".calendar-scroll");if(current){current.scrollTop=scrollTop;current.scrollLeft=scrollLeft;}}
