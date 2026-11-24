@@ -4,7 +4,7 @@ const today=()=>new Intl.DateTimeFormat("sv-SE",{timeZone:"Europe/Berlin",year:"
 const staff=["Daniela","Sofia","Melina","Vanessa","Jennifer"].map((name,i)=>({id:"demo-"+i,code:"demo-"+i,name,specialty:"Stylistin"}));
 const services=[{code:"demo-cut",name:"Herrenhaarschnitt",duration:30},{code:"demo-dry",name:"Damenhaarschnitt",duration:45},{code:"demo-color",name:"Ansatzfarbe",duration:90}];
 const days=new Map();let seq=0;
-function entries(d){if(!days.has(d))days.set(d,[{id:"example-1",staff_id:staff[0].id,kind:"appointment",customer_name:"Testtermin A",service_name_snapshot:"Damenhaarschnitt",local:{start:600,end:645}},{id:"example-2",staff_id:staff[1].id,kind:"absence",note:"Test-Sperre",local:{start:660,end:720}},{id:"example-3",staff_id:staff[2].id,kind:"appointment",customer_name:"Testtermin B",service_name_snapshot:"Ansatzfarbe",local:{start:840,end:930}}]);return days.get(d)}
+function entries(d){if(!days.has(d))days.set(d,[{id:d+"-example-1",staff_id:staff[0].id,kind:"appointment",customer_name:"Testtermin A",service_name_snapshot:"Damenhaarschnitt",local:{start:600,end:645}},{id:d+"-example-2",staff_id:staff[1].id,kind:"absence",note:"Test-Sperre",local:{start:660,end:720}},{id:d+"-example-3",staff_id:staff[2].id,kind:"appointment",customer_name:"Testtermin B",service_name_snapshot:"Ansatzfarbe",local:{start:840,end:930}}]);return days.get(d)}
 const result=(body,ok=true)=>Promise.resolve({ok,json:async()=>body});
 window.fetch=(url,opt={})=>{
  const u=new URL(url,location.href),action=u.searchParams.get("action"),b=opt.body?JSON.parse(opt.body):{},d=u.searchParams.get("day")||b.day||today();
