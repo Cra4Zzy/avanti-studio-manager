@@ -11,3 +11,89 @@ dialog{border:1px solid #d3c2b2;border-radius:19px;padding:0;width:min(470px,cal
 #toast{position:fixed;bottom:22px;right:22px;max-width:370px;background:#2e2720;color:#fff7ec;padding:14px 19px;border-radius:12px;box-shadow:0 12px 30px #211d1940;z-index:50;font-size:12px;display:none}#toast.show{display:block}
 footer{max-width:1500px;margin:auto;border-top:1px solid #e4d8cd;padding:20px 48px 34px;font-size:10px;letter-spacing:.12em;color:#8c7b6b;display:flex;gap:10px;justify-content:space-between}
 @media(max-width:760px){.site-header{padding:12px 15px}.brand strong{font-size:15px}.header-right #account{display:none}.workspace-hero{align-items:stretch;flex-direction:column}.stats{width:100%}.stat{flex:1}.login-shell{margin:10px 0;grid-template-columns:1fr}.login-intro{padding:28px;min-height:200px}.login-intro h1{font-size:45px}.login-panel{padding:30px}.toolbar{align-items:stretch}.day-controls{width:100%;justify-content:space-between}.day-controls strong{min-width:unset}.day-controls input{max-width:125px}.calendar-grid{min-width:710px}footer{padding:20px;flex-wrap:wrap}.entry-form .form-row{grid-template-columns:1fr}}
+
+
+/* Studio workspace refresh — compact operational UI, warm salon identity. */
+:root{--ink:#292622;--muted:#655e56;--line:#e4ded6;--card:#fffefa;--cream:#f6f3ee;--accent:#8b6247;--dark:#292622}
+body{background:#f4f1ec}
+.pilot-bar{height:auto;min-height:27px;padding:5px 12px;letter-spacing:.1em;text-align:center;flex-wrap:wrap}
+.site-header{padding:12px clamp(16px,4vw,56px);box-shadow:0 1px 10px #29262208}
+main{max-width:1600px;padding:25px clamp(12px,3vw,42px) 48px}
+.workspace-hero{margin:0 0 20px;align-items:center}
+.workspace-hero h1{font:750 clamp(28px,3.2vw,42px)/1.1 Manrope,system-ui,sans-serif;letter-spacing:-.045em;margin:7px 0}
+.workspace-hero p{font-size:13px}
+.sync-pill{display:flex;align-items:center;gap:8px;border:1px solid #b7d6c5;background:#eff8f1;color:#235b3c;padding:10px 13px;border-radius:9px;font-size:11px;font-weight:800;white-space:nowrap}
+.sync-pill i{width:8px;height:8px;border-radius:50%;background:#27814b;flex-shrink:0}
+.sync-pill.sync-error{background:#fff1df;color:#7e4618;border-color:#e8c39a}
+.sync-pill.sync-error i{background:#bb6b23}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:20px}
+.stat{min-width:0;padding:16px 20px;border-radius:12px;background:#fffefa;box-shadow:0 2px 6px #29262205}
+.stat strong{font:750 34px/1.2 Manrope,system-ui,sans-serif;letter-spacing:-.05em;font-variant-numeric:tabular-nums;margin:4px 0 2px}
+.stat small{font-weight:750;color:#534b43}
+.stat span{font-size:11px;color:#726b63}
+.stat-free{background:#eaf4eb;border-color:#c7ddcd}
+.stat-free strong{color:#25603e}
+.stat-lock{background:#f0edf5;border-color:#dfd7e9}
+.stat-lock strong{color:#604b77}
+.workspace-card{background:var(--card);border:1px solid #dcd5cc;border-radius:15px;overflow:hidden;box-shadow:0 8px 25px #392a1b08}
+.toolbar{border:0;border-radius:0;padding:14px 18px;gap:12px}
+.day-controls{gap:5px}
+.day-controls button,.refresh{height:42px;min-width:42px;border:1px solid #d6cfc5;background:#fffefa;color:#332b24;font-weight:750}
+.day-controls button:hover,.refresh:hover{background:#eee7df}
+.day-controls .today-button{padding:0 13px}
+.date-title{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.date-title strong{font-size:15px}
+.date-title input{border:1px solid #d6cfc5;border-radius:8px;padding:8px;background:#fffefa;min-height:40px;max-width:155px}
+.week-strip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;padding:0 18px 15px}
+.week-chip{border:1px solid #e2dcd4;border-radius:9px;min-height:66px;padding:7px 2px;background:#f9f7f3;color:#554c43;display:grid;justify-items:center;align-content:center;gap:2px}
+.week-chip span,.week-chip small{font-size:10px;font-weight:700}
+.week-chip strong{font-size:19px;line-height:1.15}
+.week-chip[aria-pressed=true]{background:#352d27;color:#fff9ef;border-color:#352d27}
+.week-chip:not(:disabled):hover{box-shadow:inset 0 0 0 2px #b99c82}
+.filter-line{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 18px;border-top:1px solid var(--line);flex-wrap:wrap}
+.filter-line>div:first-child{display:flex;align-items:center;gap:9px}
+.filter-line label{font-size:12px;font-weight:750}
+.filter-line select{border:1px solid #cfc6bb;background:#fffefa;border-radius:8px;padding:8px 11px;min-height:40px;font-weight:650;color:#332b24;max-width:100%}
+.legend{border:0;padding:0;gap:12px;font-weight:650}
+.legend i{width:12px;height:12px;vertical-align:-1px;border:1px solid #0002}
+.legend .l-free{background:#d0ebd8}
+.legend .l-booked{background:#e8b994}
+.legend .l-block{background:#c9b9df}
+.legend .l-off{background:#e4e0db}
+.calendar-help{padding:0 18px 12px;font-size:11px;color:#665c51}
+.calendar-scroll{border:0;border-top:1px solid #dcd5cc;border-radius:0;max-height:70vh;overscroll-behavior:contain}
+.calendar-grid{min-width:calc(64px + var(--team-count)*150px);grid-template-columns:64px repeat(var(--team-count),minmax(150px,1fr))}
+.cal-corner,.cal-head{background:#f2ede6;min-height:62px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #d4cabe;text-align:left}
+.cal-corner{position:sticky;left:0;z-index:6;justify-content:center}
+.cal-head strong{font-size:13px}
+.cal-head small{font-size:10px;display:block}
+.person-initial{height:32px;width:32px;flex:0 0 32px;display:grid;place-items:center;border-radius:50%;background:#e2d2bf;color:#503c2b;font-size:11px;font-weight:800}
+.cal-time{position:sticky;left:0;z-index:3;background:#faf8f4;font-size:12px;color:#776c60;display:grid;place-items:center;min-height:44px;border-right:1px solid #e3dcd3}
+.cal-time.hour{font-weight:800;color:#3d342c;border-top:1px solid #c8bfb2}
+.cal-cell{min-height:44px;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;padding:5px 10px;font-size:11px;border-left:1px solid #e4ddd3;border-bottom:1px solid #e9e3da}
+.cal-cell.hour{border-top:1px solid #d6cec3}
+.cal-cell.free{background:#edf8ef;color:#235b39}
+.cal-cell.free:hover{background:#cde9d4}
+.cal-cell.booked{background:#f4dfcd;color:#653b21;border-left:3px solid #ad683b}
+.cal-cell.booked:hover{background:#efceb4}
+.cal-cell.absence{background:#e9e0f2;color:#503b6b;border-left:3px solid #8062a1}
+.cal-cell.absence:hover{background:#dcd0eb}
+.cal-cell.continuation{border-top-color:transparent}
+.cal-cell.booked.continuation,.cal-cell.absence.continuation{border-bottom-color:#00000008}
+.cal-cell.off,.cal-cell.past{background:#f1efeb;color:#81786e}
+.cal-cell small{font-size:10px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.9}
+.cal-cell .label{max-width:100%}
+dialog{border-radius:15px}
+.dialog-top h2{font:750 25px/1.2 Manrope,system-ui,sans-serif;letter-spacing:-.03em}
+.entry-form input,.entry-form select{min-height:48px}
+@media(max-width:700px){
+ main{padding:18px 10px 35px}.workspace-hero{align-items:flex-start;gap:12px}.workspace-hero h1{font-size:30px}
+ .sync-pill{white-space:normal;padding:8px 10px}.stats{gap:6px;margin-bottom:12px}.stat{padding:10px 8px}.stat small{font-size:10px}.stat strong{font-size:26px}.stat span{display:none}
+ .toolbar{padding:10px;display:grid;grid-template-columns:1fr auto}.day-controls{width:auto;justify-content:flex-start}.date-title{grid-row:2;grid-column:1/-1;justify-content:space-between;gap:6px}.date-title strong{font-size:13px}.date-title input{max-width:136px}
+ .refresh{padding:8px 11px}.refresh span{display:none}.week-strip{padding:0 10px 10px;gap:3px}.week-chip{min-height:55px}.week-chip strong{font-size:17px}.week-chip span,.week-chip small{font-size:9px}
+ .filter-line{padding:10px;gap:10px}.filter-line>div:first-child{width:100%;justify-content:space-between}.filter-line select{flex:1;max-width:none}.legend{gap:8px;font-size:10px}.calendar-help{padding:0 10px 10px}
+ .calendar-grid{min-width:calc(56px + var(--team-count)*140px);grid-template-columns:56px repeat(var(--team-count),minmax(140px,1fr))}
+ .calendar-scroll{max-height:65vh}.cal-cell,.cal-time{min-height:48px}.cal-head{padding:9px 6px}.person-initial{width:27px;height:27px;flex-basis:27px}
+ .header-right{gap:7px;font-size:10px}.header-right button{padding:8px}.dialog-body{padding:18px}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
