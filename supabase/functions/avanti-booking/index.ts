@@ -72,7 +72,7 @@ function availability(info,day,serviceCode,staffCode,entries){
 }
 async function digest(source){const bytes=new TextEncoder().encode(source);const hash=await crypto.subtle.digest("SHA-256",bytes);return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,"0")).join("");}
 function knownError(e){const s=String(e?.message||"");if(s.includes("exclusion")||s.includes("calendar_entries_salon_id_staff_id")||e?.code==="23P01")return [409,"slot_taken"];
- const expected=["invalid_booking","invalid_day","invalid_customer_name","invalid_customer_email","invalid_customer_phone","email_required","service_unavailable","staff_unavailable","service_required","outside_working_hours","invalid_duration","invalid_block","invalid_profile","invalid_photo","staff_has_appointments","invalid_shifts","existing_appointments","entry_missing","time_in_past","rate_limited","rate_key_required"];
+ const expected=["invalid_booking","invalid_day","invalid_customer_name","invalid_customer_email","invalid_customer_phone","email_required","service_unavailable","staff_unavailable","service_required","outside_working_hours","invalid_duration","invalid_block","invalid_profile","invalid_photo","staff_has_appointments","invalid_shifts","existing_appointments","salon_closed","closure_overlap","entry_missing","time_in_past","rate_limited","rate_key_required"];
  const x=expected.find(v=>s.includes(v));if(x)return [x==="rate_limited"?429:422,x];return [e?.status===401?401:e?.status===403?403:500,e?.status===401?"login_required":e?.status===403?"forbidden":"request_failed"];
 }
 Deno.serve(async(req)=>{
@@ -88,7 +88,7 @@ Deno.serve(async(req)=>{
   const date=url.searchParams.get("day")||"",service=url.searchParams.get("service")||"",staff=url.searchParams.get("staff")||"any";
   const today=berlinParts(new Date()).day;if(!dateOk(date)||date<today||date>addDays(today,90))return err(422,"invalid_day",origin);
   if(!/^[a-z0-9]{1,20}$/.test(service)||!(/^[a-z0-9]{1,20}$/.test(staff)||staff==="any"))return err(422,"invalid_query",origin);
-  const info=await catalog();const occupied=await events(info.salon.id,date,false);
+  const info=await catalog();const closure=await db("rest/v1/rpc/avanti_day_closure",{method:"POST",body:{p_salon:info.salon.id,p_day:date}});if(closure.closed)return ok({day:date,service,staff,slots:[],publicBookingEnabled:false},origin);const occupied=await events(info.salon.id,date,false);
   return ok({day:date,service,staff,...availability(info,date,service,staff,occupied),publicBookingEnabled:Deno.env.get("AVANTI_PUBLIC_BOOKING_ENABLED")==="true"},origin);
  }
  if(req.method==="GET"&&action==="team"){
@@ -99,11 +99,16 @@ Deno.serve(async(req)=>{
   const portraits=ids.length?await db("rest/v1/avanti_staff_portraits?select=staff_id,photo&staff_id=in.("+ids.join(",")+")"):[];
   return ok({team:allowed.map(s=>({id:s.id,code:s.code,name:s.display_name,specialty:s.specialty,active:s.active,photo:portraits.find(p=>p.staff_id===s.id)?.photo||null}))},origin);
  }
+ if(req.method==="GET"&&action==="closures"){
+  const user=await authStaff(req);
+  if(!["owner","manager"].includes(user.role))return err(403,"forbidden",origin);
+  return ok(await db("rest/v1/rpc/avanti_closure_settings",{method:"POST",body:{p_salon:user.salonId}}),origin);
+ }
  if(req.method==="GET"&&action==="studio"){
   const user=await authStaff(req);const day=url.searchParams.get("day")||berlinParts(new Date()).day;
   if(!dateOk(day)||day<"2020-01-01"||day>addDays(berlinParts(new Date()).day,365))return err(422,"invalid_day",origin);
-  const info=await catalog();const entries=await events(user.salonId,day,true);
-  return ok({user:{email:user.email,role:user.role},staff:info.staff.map(s=>({id:s.id,code:s.code,name:s.display_name,specialty:s.specialty})),services:info.services.map(s=>({id:s.id,code:s.code,name:s.name,duration:s.duration_minutes,price:s.price_cents/100})),shifts:info.shifts,assignments:info.assignments,entries:entries.filter(e=>coveredInterval(e,day)).map(e=>({...e,local:coveredInterval(e,day)}))},origin);
+  const info=await catalog();const [entries,closure]=await Promise.all([events(user.salonId,day,true),db("rest/v1/rpc/avanti_day_closure",{method:"POST",body:{p_salon:user.salonId,p_day:day}})]);
+  return ok({closure,user:{email:user.email,role:user.role},staff:info.staff.map(s=>({id:s.id,code:s.code,name:s.display_name,specialty:s.specialty})),services:info.services.map(s=>({id:s.id,code:s.code,name:s.name,duration:s.duration_minutes,price:s.price_cents/100})),shifts:info.shifts,assignments:info.assignments,entries:entries.filter(e=>coveredInterval(e,day)).map(e=>({...e,local:coveredInterval(e,day)}))},origin);
  }
  if(req.method!=="POST")return err(405,"method_not_allowed",origin);
  const raw=await req.text();if(raw.length>(["staff-create","staff-save"].includes(action)?110000:12000))return err(413,"payload_too_large",origin);
@@ -121,6 +126,10 @@ Deno.serve(async(req)=>{
   return ok({confirmed:true,bookingId:inserted},origin);
  }
  const user=await authStaff(req);
+ if(["closure-add","closure-remove","holiday-toggle"].includes(action)){
+  if(!["owner","manager"].includes(user.role))return err(403,"forbidden",origin);
+  return ok(await db("rest/v1/rpc/avanti_manage_closures",{method:"POST",body:{p_salon:user.salonId,p_action:action,p_data:data}}),origin);
+ }
  if(["staff-create","staff-save","staff-archive","staff-restore"].includes(action)){
   if(!["owner","manager"].includes(user.role))return err(403,"forbidden",origin);
   const result=await db("rest/v1/rpc/avanti_manage_staff",{method:"POST",body:{p_salon:user.salonId,p_action:action,p_data:data}});
