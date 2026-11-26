@@ -14,7 +14,7 @@ const clock=t=>String(Math.floor(t/60)).padStart(2,"0")+":"+String(t%60).padStar
 const label=d=>new Intl.DateTimeFormat("de-DE",{weekday:"long",day:"numeric",month:"long",year:"numeric",timeZone:"UTC"}).format(new Date(d+"T00:00:00Z"));
 let token="",refresh="",expires=0,day=today(),snapshot=null,poll=null,busy=false,staffFilter="all",filterInitialized=false,lastLoadedDay=null,loadError="",sessionGeneration=0;
 const toast=s=>{const x=document.querySelector("#toast");x.textContent=s;x.classList.add("show");clearTimeout(x._timer);x._timer=setTimeout(()=>x.classList.remove("show"),3800)};
-const errorLabel=e=>({"slot_taken":"Der Zeitraum wurde inzwischen belegt. Bitte andere Zeit wählen.","invalid_day":"Datum ungültig.","time_in_past":"Diese Uhrzeit liegt bereits in der Vergangenheit.","outside_working_hours":"Die Behandlung passt nicht in die Arbeitszeit oder Pause.","login_required":"Bitte neu anmelden.","session_invalid":"Sitzung abgelaufen. Bitte neu anmelden.","service_unavailable":"Leistung nicht verfügbar.","rate_limited":"Zu viele Anfragen.","request_failed":"Serveranfrage fehlgeschlagen."}[e.message]||e.message);
+const errorLabel=e=>({"existing_appointments":"Der neue Arbeitsplan würde bestehende Termine ausschließen. Bitte zuerst verschieben.","invalid_shifts":"Arbeitszeiten prüfen: keine Überschneidungen, 15-Minuten-Raster.","invalid_profile":"Bitte Name und Profil prüfen.","invalid_booking":"Bitte Datum, Uhrzeit und Dauer prüfen.","entry_missing":"Der Eintrag ist nicht mehr vorhanden.","forbidden":"Keine Berechtigung für diese Aktion.","staff_unavailable":"Mitarbeiterin nicht verfügbar.","slot_taken":"Der Zeitraum wurde inzwischen belegt. Bitte andere Zeit wählen.","invalid_day":"Datum ungültig.","time_in_past":"Diese Uhrzeit liegt bereits in der Vergangenheit.","outside_working_hours":"Die Behandlung passt nicht in die Arbeitszeit oder Pause.","login_required":"Bitte neu anmelden.","session_invalid":"Sitzung abgelaufen. Bitte neu anmelden.","service_unavailable":"Leistung nicht verfügbar.","rate_limited":"Zu viele Anfragen.","request_failed":"Serveranfrage fehlgeschlagen."}[e.message]||e.message);
 async function request(action,{method="GET",body=null,session=token}={}){
  const path=API+"?action="+encodeURIComponent(action)+(method==="GET"&&body?.day?"&day="+encodeURIComponent(body.day):"");
  const res=await fetch(path,{method,headers:{"apikey":KEY,"Authorization":session?"Bearer "+session:"Bearer "+KEY,"Content-Type":"application/json"},body:method==="POST"?JSON.stringify(body):undefined,cache:"no-store"});
@@ -31,7 +31,7 @@ async function refreshAuth(){if(Date.now()<expires-60000)return;if(!refresh)thro
 }
 function login(){
  sessionGeneration++;token="";refresh="";expires=0;snapshot=null;lastLoadedDay=null;loadError="";filterInitialized=false;staffFilter="all";clearInterval(poll);logout.hidden=true;account.textContent="";
- root.innerHTML='<div class="login-shell"><div class="login-intro"><div><span class="eyebrow">AVANTI / STUDIO MANAGER</span><h1>Dein Salon.<br>Dein Kalender.</h1></div><p>Alle Termine an einem Ort. Eintragen, sperren und freie Zeiten sofort über den gemeinsamen Server abgleichen.</p></div><div class="login-panel"><span class="eyebrow">GESCHÜTZTER MITARBEITERZUGANG</span><h2>Willkommen zurück.</h2><p>Melde dich mit deinem von der Salonleitung freigegebenen Konto an. Es werden keine Testpasswörter angelegt.</p><form id="login-form"><label>E-Mail-Adresse<input name="email" type="email" autocomplete="username" required></label><label>Passwort<input name="password" type="password" autocomplete="current-password" required></label><button class="primary">Verbinden & Kalender öffnen</button><div id="login-error" class="status-text" role="alert"></div></form><p class="subtle">Noch kein Konto? Die Salonleitung muss es vor der ersten Nutzung freigeben. Die lokale Demo bleibt separat verfügbar.</p></div></div>';
+ root.innerHTML='<div class="login-shell"><div class="login-intro"><div><span class="eyebrow">AVANTI / STUDIO MANAGER</span><h1>Dein Salon.<br>Dein Kalender.</h1></div><p>Alle Termine an einem Ort. Eintragen, sperren und freie Zeiten sofort über den gemeinsamen Server abgleichen.</p></div><div class="login-panel"><span class="eyebrow">GESCHÜTZTER MITARBEITERZUGANG</span><h2>Willkommen zurück.</h2><p>Melde dich mit deinem von der Salonleitung freigegebenen Konto an. Es werden keine Testpasswörter angelegt.</p><form id="login-form"><label>E-Mail-Adresse<input name="email" type="email" autocomplete="username" required></label><label>Passwort<input name="password" type="password" autocomplete="current-password" required></label><button class="primary">Verbinden & Kalender öffnen</button><div id="login-error" class="status-text" role="alert"></div></form><p class="subtle">Der Salonzugang wird einmalig von der Salonleitung eingerichtet. Keine öffentliche Registrierung.</p></div></div>';
  root.querySelector("#login-form").addEventListener("submit",async e=>{e.preventDefault();const f=e.currentTarget,b=f.querySelector("button"),status=f.querySelector("#login-error");b.disabled=true;status.textContent="";try{await authenticate(f.elements.email.value,f.elements.password.value);await load();poll=setInterval(()=>{if(token&&!dialog.open&&!document.hidden)load(true)},25000)}catch(err){status.textContent=errorLabel(err);token="";refresh="";expires=0}finally{b.disabled=false}});
 }
 async function load(silent=false){
@@ -44,9 +44,9 @@ async function load(silent=false){
 }
 function blocked(staff,t,end){
  const shifts=snapshot.shifts.filter(w=>w.staff_id===staff.id&&w.weekday===new Date(day+"T00:00:00Z").getUTCDay());
- if(!shifts.some(w=>t>=w.start_minute&&end<=w.end_minute))return "off";
  const entry=snapshot.entries.find(e=>e.staff_id===staff.id&&t<e.local.end&&end>e.local.start);
  if(entry)return entry;
+ if(!shifts.some(w=>t>=w.start_minute&&end<=w.end_minute))return "off";
  if(day<today()||day===today()&&t<=minute())return "past";
  return "free";
 }
@@ -59,7 +59,7 @@ function render(silent=false){
  const members=staffFilter==="all"?all:all.filter(x=>x.code===staffFilter);
  const ids=new Set(members.map(x=>x.id)),entries=snapshot.entries.filter(e=>e.kind==="appointment"&&ids.has(e.staff_id)),locks=snapshot.entries.filter(e=>e.kind==="absence"&&ids.has(e.staff_id));
  const shifts=snapshot.shifts.filter(w=>ids.has(w.staff_id)&&w.weekday===new Date(day+"T00:00:00Z").getUTCDay());
- const first=Math.min(480,...shifts.map(w=>Math.floor(w.start_minute/15)*15)),last=Math.min(1440,Math.max(1140,...shifts.map(w=>Math.ceil(w.end_minute/15)*15)));
+ const first=Math.min(480,...shifts.map(w=>Math.floor(w.start_minute/15)*15),...snapshot.entries.filter(e=>e.kind==="appointment"&&ids.has(e.staff_id)).map(e=>Math.floor(e.local.start/15)*15)),last=Math.min(1440,Math.max(1140,...shifts.map(w=>Math.ceil(w.end_minute/15)*15),...snapshot.entries.filter(e=>e.kind==="appointment"&&ids.has(e.staff_id)).map(e=>Math.ceil(e.local.end/15)*15)));
  const freeCount=members.reduce((sum,m)=>sum+Array.from({length:(last-first)/15},(_,i)=>first+i*15).filter(t=>blocked(m,t,t+15)==="free").length,0);
  const initials=name=>String(name||"").split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase();
  const weekStart=addDay(day,-((new Date(day+"T00:00:00Z").getUTCDay()+6)%7));
@@ -72,12 +72,18 @@ function render(silent=false){
  '<div class="calendar-help">Freie Zeit antippen, um einen Telefontermin anzulegen oder die Zeit zu sperren.</div>'+
  (members.length?'<div class="calendar-scroll" tabindex="0" aria-label="Tageskalender"><div class="calendar-grid" style="--team-count:'+members.length+'"><div class="cal-corner">Uhrzeit</div>'+members.map(x=>'<div class="cal-head"><span class="person-initial">'+esc(initials(x.name))+'</span><div><strong>'+esc(x.name)+'</strong><small>'+esc(x.specialty||"Mitarbeiterin")+'</small></div></div>').join("")+
  Array.from({length:(last-first)/15},(_,i)=>{const at=first+i*15;return '<div class="cal-time '+(at%60===0?'hour':'')+'">'+clock(at)+'</div>'+members.map(member=>{const v=blocked(member,at,at+15),isEntry=typeof v==="object",status=isEntry?(v.kind==="absence"?"absence":"booked"):v;const lead=isEntry&&at===Math.max(first,Math.floor(v.local.start/15)*15),name=isEntry?(v.kind==="absence"?"Gesperrt":(v.customer_name||"Termin")):(v==="free"?"+ Frei":v==="past"?"Vergangen":"");const detail=lead?(clock(v.local.start)+"–"+clock(v.local.end)+(v.kind==="appointment"&&v.service_name_snapshot?" · "+v.service_name_snapshot:"")):"";const attr=isEntry?'data-entry="'+esc(v.id)+'"':v==="free"?'data-free="'+at+'" data-staff="'+esc(member.code)+'"':'disabled';return '<button type="button" class="cal-cell '+status+(at%60===0?" hour":"")+(isEntry&&!lead?" continuation":"")+'" '+attr+' aria-label="'+esc(member.name+" "+clock(at)+" "+name)+'"><span class="label">'+esc(isEntry&&!lead?"":name)+'</span>'+(detail?'<small>'+esc(detail)+'</small>':"")+'</button>'}).join("")}).join("")+'</div></div>':'<p class="notice">Noch keine Mitarbeiterprofile vorhanden.</p>')+
- '</section><p class="subtle">Pilotbetrieb · Keine echten Kundendaten vor Salonfreigabe. Dienstpläne, Urlaub, Feiertage und Schließtage werden in dieser Oberfläche noch nicht verwaltet.</p>';
+ '</section><p class="subtle">Gemeinsamer Salonkalender · Änderungen werden zentral gespeichert.</p>';
  function navigate(d){if(busy||d<today()||d>addDay(today(),365))return;day=d;load();}
  root.querySelectorAll("[data-step]").forEach(b=>b.onclick=()=>navigate(addDay(day,Number(b.dataset.step))));
  root.querySelectorAll("[data-date]").forEach(b=>b.onclick=()=>navigate(b.dataset.date));
  root.querySelector("#date").onchange=e=>{if(busy){e.target.value=day;return;}if(isDate(e.target.value))navigate(e.target.value)};
  root.querySelector("#refresh").onclick=()=>load();
+ const tools=document.createElement("div");tools.className="studio-tools";
+ tools.innerHTML='<button type="button" class="primary" id="quick-book">+ Telefontermin</button><button type="button" id="absence-range">Urlaub / Schließtag</button>'+(['owner','manager'].includes(snapshot.user.role)?'<button type="button" id="team-settings">Team & Arbeitszeiten</button>':'');
+ root.querySelector(".workspace-card").before(tools);
+ tools.querySelector("#quick-book").onclick=()=>quickBook();
+ tools.querySelector("#absence-range").onclick=()=>absenceDialog();
+ if(tools.querySelector("#team-settings"))tools.querySelector("#team-settings").onclick=()=>teamDialog();
  root.querySelector("#staff-filter").onchange=e=>{staffFilter=e.target.value;e.target.blur();render(true);root.querySelector("#staff-filter").focus()};
  root.querySelectorAll("[data-free]").forEach(b=>b.onclick=()=>{if(!busy)choice(b.dataset.staff,Number(b.dataset.free))});
  root.querySelectorAll("[data-entry]").forEach(b=>b.onclick=()=>{if(!busy)showEntry(b.dataset.entry)});
@@ -90,7 +96,7 @@ function choice(code,start){const person=snapshot.staff.find(s=>s.code===code);i
  dialog.querySelector("#block-choice").onclick=()=>blockDialog(person,start);
 }
 function bookDialog(person,start){
- const services=snapshot.services.filter(s=>freeFor(person,start,s.duration));const lengths=Array.from({length:32},(_,i)=>(i+1)*15).filter(n=>freeFor(person,start,n));if(!lengths.length)return toast("Zeitfenster nicht mehr frei.");
+ const services=snapshot.services.filter(s=>snapshot.assignments?.some(a=>a.staff_id===person.id&&a.service_id===s.id)&&freeFor(person,start,s.duration));const lengths=Array.from({length:32},(_,i)=>(i+1)*15).filter(n=>freeFor(person,start,n));if(!lengths.length)return toast("Zeitfenster nicht mehr frei.");
  dialog.close();
  openDialog(header("Telefontermin",person.name+" · "+label(day)+" · "+clock(start)+" Uhr")+'<form class="entry-form" id="entry-form"><label>Behandlung<select name="serviceCode"><option value="">Andere Dauer / ohne Behandlung</option>'+services.map(s=>'<option value="'+esc(s.code)+'">'+esc(s.name)+' · '+s.duration+' Min.</option>').join("")+'</select></label><div class="form-row"><label>Kundenname<input name="name" maxlength="100" placeholder="Telefontermin" autocomplete="off"></label><label>Telefon (optional)<input name="phone" type="tel" maxlength="40" autocomplete="off"></label></div><label>Dauer<select name="duration">'+lengths.map(n=>'<option value="'+n+'" '+(n===30?"selected":"")+'>'+n+' Minuten</option>').join("")+'</select></label><div id="booking-span" class="dialog-context"></div><div class="subtle">Die gewählte Behandlungsdauer wird vollständig reserviert. Speichern erfolgt im gemeinsamen Salonkalender.</div><p class="dialog-error" role="alert"></p><button class="primary" type="submit">Termin verbindlich speichern</button></form>');
  const form=dialog.querySelector("form"),f=form.elements;function sync(){const s=snapshot.services.find(s=>s.code===f.serviceCode.value);if(s)f.duration.value=String(s.duration);f.duration.disabled=!!s;dialog.querySelector("#booking-span").textContent=clock(start)+" bis "+clock(start+Number(f.duration.value))+" Uhr";}f.serviceCode.onchange=sync;f.duration.onchange=sync;sync();
@@ -103,8 +109,51 @@ function blockDialog(person,start){
 }
 function showEntry(id){const x=snapshot.entries.find(e=>e.id===id);if(!x)return;const person=snapshot.staff.find(s=>s.id===x.staff_id);const isBlock=x.kind==="absence";
  openDialog(header(isBlock?"Gesperrter Zeitraum":"Termindetails",(person?.name||"Mitarbeiterin")+" · "+label(day)+" · "+clock(x.local.start)+" – "+clock(x.local.end))+'<div class="dialog-context"><strong>'+esc(isBlock?(x.note||"Nicht verfügbar"):(x.customer_name||"Telefontermin"))+'</strong>'+(isBlock?"":'<p>'+esc(x.service_name_snapshot||"Telefontermin")+'</p><p>'+esc(x.customer_phone||"Keine Telefonnummer")+'</p><p>'+esc(x.customer_email||"")+'</p>')+'</div><p class="subtle">Absagen bzw. Freigeben entfernt diesen Eintrag aus den verfügbaren Belegungen. Der Datensatz bleibt für die Historie erhalten.</p><button id="remove-entry" class="danger">'+(isBlock?"Zeitraum freigeben":"Termin absagen")+'</button><p class="dialog-error" role="alert"></p>');
+ if(!isBlock){const edit=document.createElement("button");edit.className="primary";edit.textContent="Termin bearbeiten / verschieben";dialog.querySelector("#remove-entry").before(edit);edit.onclick=()=>editEntry(x);}
  dialog.querySelector("#remove-entry").onclick=async e=>{if(!confirm(isBlock?"Zeitraum wirklich freigeben?":"Termin wirklich absagen?"))return;const b=e.currentTarget;b.disabled=true;try{await refreshAuth();await request(isBlock?"unblock":"cancel",{method:"POST",body:{id}});dialog.close();toast(isBlock?"Zeit freigegeben.":"Termin abgesagt.");await load()}catch(err){dialog.querySelector(".dialog-error").textContent=errorLabel(err)}finally{b.disabled=false}};
 }
-logout.onclick=()=>{login();toast("Abgemeldet.")};document.addEventListener("visibilitychange",()=>{if(!document.hidden&&token&&!dialog.open)load(true)});
+
+const staffOptions=(selected="",all=false)=>(all?'<option value="all">Gesamter Salon</option>':'')+snapshot.staff.map(s=>'<option value="'+esc(s.code)+'" '+(s.code===selected?'selected':'')+'>'+esc(s.name)+'</option>').join("");
+const durationOptions=(selected=30)=>Array.from({length:32},(_,i)=>(i+1)*15).map(n=>'<option value="'+n+'" '+(n===selected?'selected':'')+'>'+n+' Minuten</option>').join("");
+function replaceDialog(title,context,body){if(dialog.open)dialog.close();openDialog(header(title,context)+body);}
+function bindSave(action,read,success,onDone){
+ const form=dialog.querySelector("form");form.onsubmit=async e=>{e.preventDefault();const b=form.querySelector('[type=submit]');const error=form.querySelector(".dialog-error");b.disabled=true;error.textContent="";
+ try{const body=read(form.elements);await refreshAuth();await request(action,{method:"POST",body});dialog.close();toast(success);if(onDone)onDone(body);await load();}
+ catch(err){error.textContent=errorLabel(err);}finally{b.disabled=false}};
+}
+function minuteInput(v){if(!/^\d{2}:\d{2}$/.test(v))throw Error("Bitte Uhrzeit eingeben.");const [h,m]=v.split(":").map(Number);if(m%15)throw Error("Bitte eine Uhrzeit im 15-Minuten-Raster wählen.");return h*60+m;}
+function quickBook(){
+ replaceDialog("Telefontermin","Schnelleingabe · zentraler Kalender",'<form class="entry-form"><label>Mitarbeiterin<select name="staffCode" required>'+staffOptions(staffFilter)+'</select></label><div class="form-row"><label>Datum<input name="day" type="date" min="'+today()+'" max="'+addDay(today(),90)+'" value="'+(day>addDay(today(),90)?today():day)+'" required></label><label>Uhrzeit<input name="start" type="time" step="900" value="09:00" required></label></div><label>Kundenname<input name="name" maxlength="100" placeholder="Telefontermin"></label><label>Telefon (optional)<input name="phone" type="tel" maxlength="40"></label><label>Behandlung<select name="serviceCode"></select></label><label>Dauer<select name="duration">'+durationOptions()+'</select></label><p class="dialog-error" role="alert"></p><button class="primary" type="submit">Termin speichern</button></form>');
+ const f=dialog.querySelector("form").elements;
+ function services(){const p=snapshot.staff.find(s=>s.code===f.staffCode.value);f.serviceCode.innerHTML='<option value="">Telefontermin / freie Dauer</option>'+snapshot.services.filter(s=>snapshot.assignments?.some(a=>a.staff_id===p?.id&&a.service_id===s.id)).map(s=>'<option value="'+esc(s.code)+'">'+esc(s.name)+'</option>').join("");f.duration.disabled=false;}
+ f.staffCode.onchange=services;f.serviceCode.onchange=()=>{const s=snapshot.services.find(s=>s.code===f.serviceCode.value);if(s)f.duration.value=String(s.duration);f.duration.disabled=!!s;};services();
+ bindSave("staff-book",f=>({staffCode:f.staffCode.value,day:f.day.value,start:minuteInput(f.start.value),name:f.name.value.trim()||"Telefontermin",phone:f.phone.value,serviceCode:f.serviceCode.value||null,duration:Number(f.duration.value)}),"Termin gespeichert.",body=>day=body.day);
+}
+function editEntry(x){
+ const p=snapshot.staff.find(s=>s.id===x.staff_id);
+ const past=new Date(x.starts_at).getTime()<=Date.now();
+ replaceDialog("Termin bearbeiten",x.service_name_snapshot||"Telefontermin",'<form class="entry-form"><label>Kundenname<input name="name" value="'+esc(x.customer_name||"Telefontermin")+'" maxlength="100" required></label><label>Telefon<input name="phone" value="'+esc(x.customer_phone||"")+'" maxlength="40" type="tel"></label>'+(past?'<p class="subtle">Vergangene Termine können nur in ihren Kontaktdaten geändert werden.</p>':'<label>Mitarbeiterin<select name="staffCode">'+staffOptions(p?.code)+'</select></label><div class="form-row"><label>Datum<input name="day" type="date" min="'+today()+'" max="'+addDay(today(),365)+'" value="'+day+'" required></label><label>Uhrzeit<input name="start" type="time" step="900" value="'+clock(x.local.start)+'" required></label></div><label>Dauer<select name="duration">'+durationOptions(x.local.end-x.local.start)+'</select></label>')+'<p class="dialog-error" role="alert"></p><button class="primary" type="submit">Änderungen speichern</button></form>');
+ bindSave("edit-entry",f=>({id:x.id,name:f.name.value,phone:f.phone.value,...(past?{}:{staffCode:f.staffCode.value,day:f.day.value,start:minuteInput(f.start.value),duration:Number(f.duration.value)})}),"Termin aktualisiert.",body=>{if(body.day)day=body.day;});
+}
+function absenceDialog(){
+ replaceDialog("Urlaub / Schließtag","Ganze Tage zentral blockieren",'<form class="entry-form"><label>Für wen?<select name="staffCode">'+staffOptions(staffFilter,true)+'</select></label><div class="form-row"><label>Von<input name="day" type="date" min="'+today()+'" max="'+addDay(today(),365)+'" value="'+day+'" required></label><label>Bis einschließlich<input name="until" type="date" min="'+today()+'" max="'+addDay(today(),365)+'" value="'+day+'" required></label></div><label>Grund<input name="note" maxlength="100" placeholder="Urlaub / Schließtag"></label><p class="subtle">Bestehende Termine oder Sperren werden nicht überschrieben. Bei Konflikten bitte zuerst die betroffenen Einträge bearbeiten.</p><p class="dialog-error" role="alert"></p><button class="primary" type="submit">Zeitraum sperren</button></form>');
+ bindSave("absence-range",f=>({staffCode:f.staffCode.value,day:f.day.value,until:f.until.value,note:f.note.value}),"Abwesenheit gespeichert.",body=>day=body.day);
+}
+function teamDialog(){
+ replaceDialog("Team & Arbeitszeiten","Salonverwaltung",'<div class="team-settings">'+snapshot.staff.map(s=>'<div class="team-row"><div><strong>'+esc(s.name)+'</strong><small>'+esc(s.specialty)+'</small></div><button data-profile="'+esc(s.code)+'">Profil</button><button data-shifts="'+esc(s.code)+'">Arbeitszeiten</button></div>').join("")+'</div>');
+ dialog.querySelectorAll("[data-profile]").forEach(b=>b.onclick=()=>profileDialog(snapshot.staff.find(s=>s.code===b.dataset.profile)));
+ dialog.querySelectorAll("[data-shifts]").forEach(b=>b.onclick=()=>shiftsDialog(snapshot.staff.find(s=>s.code===b.dataset.shifts)));
+}
+function profileDialog(person){
+ replaceDialog("Mitarbeiterprofil",person.name,'<form class="entry-form"><label>Name<input name="name" maxlength="80" required value="'+esc(person.name)+'"></label><label>Schwerpunkt<input name="specialty" maxlength="100" value="'+esc(person.specialty)+'"></label><p class="dialog-error" role="alert"></p><button class="primary" type="submit">Profil speichern</button></form>');
+ bindSave("edit-profile",f=>({staffCode:person.code,name:f.name.value,specialty:f.specialty.value}),"Profil gespeichert.");
+}
+function shiftsDialog(person){
+ const weekdays=[["Montag",1],["Dienstag",2],["Mittwoch",3],["Donnerstag",4],["Freitag",5],["Samstag",6],["Sonntag",0]];
+ replaceDialog("Wochenarbeitszeiten",person.name+' · bis zu drei Zeitfenster pro Tag','<form class="entry-form"><p class="subtle">Leere Felder bedeuten frei. Pausen entstehen zwischen den Zeitfenstern. Änderungen gelten für alle Wochen.</p><div class="shift-settings">'+weekdays.map(([name,d])=>{const slots=snapshot.shifts.filter(s=>s.staff_id===person.id&&s.weekday===d).sort((a,b)=>a.start_minute-b.start_minute);return '<fieldset><legend>'+name+'</legend>'+Array.from({length:3},(_,i)=>'<div class="shift-line"><input aria-label="'+name+' Beginn '+(i+1)+'" name="a'+d+'_'+i+'" type="time" step="900" value="'+(slots[i]?clock(slots[i].start_minute):'')+'"><span>bis</span><input aria-label="'+name+' Ende '+(i+1)+'" name="b'+d+'_'+i+'" type="time" step="900" value="'+(slots[i]?clock(slots[i].end_minute):'')+'"></div>').join("")+'</fieldset>'}).join("")+'</div><p class="dialog-error" role="alert"></p><button class="primary" type="submit">Wochenplan speichern</button></form>');
+ bindSave("edit-shifts",f=>{const shifts=[];for(const [,d] of weekdays)for(let i=0;i<3;i++){const a=f["a"+d+"_"+i].value,b=f["b"+d+"_"+i].value;if(!a&&!b)continue;if(!a||!b)throw Error("Bitte Beginn und Ende jedes Zeitfensters angeben.");const start=minuteInput(a),end=minuteInput(b);if(start>=end)throw Error("Ende muss nach Beginn liegen.");shifts.push({weekday:d,start_minute:start,end_minute:end});}return {staffCode:person.code,shifts};},"Arbeitszeiten gespeichert.");
+}
+
+logout.onclick=async()=>{const old=token;login();toast("Abgemeldet.");if(old)try{await fetch("https://xvxgqyrykkxdfadppoor.supabase.co/auth/v1/logout?scope=local",{method:"POST",headers:{apikey:KEY,Authorization:"Bearer "+old},cache:"no-store"});}catch{}};document.addEventListener("visibilitychange",()=>{if(!document.hidden&&token&&!dialog.open)load(true)});
 login();
 })();

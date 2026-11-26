@@ -1,1 +1,14 @@
-<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Avanti Haarstudio · Studio Manager</title><meta name="theme-color" content="#211d1a"><link rel="stylesheet" href="./styles.css?v=18"></head><body><header><a class="brand" href="#booking">Avanti<small>HAARSTUDIO</small></a><nav aria-label="Studio-Navigation"><a href="https://haarstudio-avanti.de/">Zur Salonwebsite</a></nav><span class="pilot">BUCHUNG · TEST</span></header><main id="app"></main><dialog id="dialog"></dialog><div id="toast" role="status"></div><footer>Avanti Haarstudio <span>Terminbuchung · Testversion</span></footer><script type="module" src="./src/app.js?v=19"></script></body></html>
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#29211d">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Avanti · Studio Manager</title>
+<link rel="stylesheet" href="./src/studio-live.css?v=3"><link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./assets/studio-icon.svg"><meta name="apple-mobile-web-app-capable" content="yes"></head>
+<body><div class="pilot-bar"><span class="pilot-dot"></span> STUDIO MANAGER <span class="pilot-separator">·</span> Geschützter Salonzugang</div>
+<header class="site-header"><div class="brand"><span class="brand-mark">A</span><div><strong>AVANTI</strong><small>STUDIO MANAGER</small></div></div><div class="header-right"><button id="install-app" hidden>App installieren</button><span id="account"></span><button id="logout" hidden>Abmelden</button></div></header>
+<main id="root"><section class="loader">Verbindung wird vorbereitet …</section></main>
+<dialog id="action-dialog"></dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+<footer>AVANTI HAARSTUDIO <span>Kaiser Webdesign</span></footer>
+<script defer src="./src/studio-live.js?v=3"></script>
+<script defer src="./src/install.js?v=3"></script></body></html>

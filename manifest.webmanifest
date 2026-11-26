@@ -1,0 +1,19 @@
+{
+  "id": "./",
+  "name": "Avanti Studio Manager",
+  "short_name": "Avanti Studio",
+  "lang": "de",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f1eb",
+  "theme_color": "#29211d",
+  "icons": [
+    {
+      "src": "assets/studio-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
