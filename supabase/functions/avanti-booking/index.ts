@@ -2,6 +2,8 @@
 const BASE=Deno.env.get("SUPABASE_URL")||"";
 const SECRET=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"";
 const ORIGINS=new Set(["https://cra4zzy.github.io","https://haarstudio-avanti.de","https://www.haarstudio-avanti.de","http://localhost:8080","http://127.0.0.1:8080"]);
+const configuredOrigin=Deno.env.get("AVANTI_STUDIO_ORIGIN");
+if(configuredOrigin && /^https:\/\/[a-z0-9.-]+\.haarstudio-avanti\.de$/.test(configuredOrigin))ORIGINS.add(configuredOrigin);
 const ZONE="Europe/Berlin";
 const cors=(origin)=>({"Access-Control-Allow-Origin":origin&&ORIGINS.has(origin)?origin:"https://cra4zzy.github.io","Vary":"Origin","Access-Control-Allow-Headers":"authorization,apikey,content-type,x-client-info","Access-Control-Allow-Methods":"GET,POST,OPTIONS"});
 const err=(code,message,origin)=>new Response(JSON.stringify({error:message}),{status:code,headers:{...cors(origin),"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"}});
@@ -70,7 +72,7 @@ function availability(info,day,serviceCode,staffCode,entries){
 }
 async function digest(source){const bytes=new TextEncoder().encode(source);const hash=await crypto.subtle.digest("SHA-256",bytes);return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,"0")).join("");}
 function knownError(e){const s=String(e?.message||"");if(s.includes("exclusion")||s.includes("calendar_entries_salon_id_staff_id")||e?.code==="23P01")return [409,"slot_taken"];
- const expected=["invalid_booking","invalid_day","invalid_customer_name","invalid_customer_email","invalid_customer_phone","email_required","service_unavailable","staff_unavailable","service_required","outside_working_hours","invalid_duration","invalid_block","time_in_past","rate_limited","rate_key_required"];
+ const expected=["invalid_booking","invalid_day","invalid_customer_name","invalid_customer_email","invalid_customer_phone","email_required","service_unavailable","staff_unavailable","service_required","outside_working_hours","invalid_duration","invalid_block","invalid_profile","invalid_shifts","existing_appointments","entry_missing","time_in_past","rate_limited","rate_key_required"];
  const x=expected.find(v=>s.includes(v));if(x)return [x==="rate_limited"?429:422,x];return [e?.status===401?401:e?.status===403?403:500,e?.status===401?"login_required":e?.status===403?"forbidden":"request_failed"];
 }
 Deno.serve(async(req)=>{
@@ -93,7 +95,7 @@ Deno.serve(async(req)=>{
   const user=await authStaff(req);const day=url.searchParams.get("day")||berlinParts(new Date()).day;
   if(!dateOk(day)||day<"2020-01-01"||day>addDays(berlinParts(new Date()).day,365))return err(422,"invalid_day",origin);
   const info=await catalog();const entries=await events(user.salonId,day,true);
-  return ok({user:{email:user.email,role:user.role},staff:info.staff.map(s=>({id:s.id,code:s.code,name:s.display_name,specialty:s.specialty})),services:info.services.map(s=>({id:s.id,code:s.code,name:s.name,duration:s.duration_minutes,price:s.price_cents/100})),shifts:info.shifts,entries:entries.filter(e=>coveredInterval(e,day)).map(e=>({...e,local:coveredInterval(e,day)}))},origin);
+  return ok({user:{email:user.email,role:user.role},staff:info.staff.map(s=>({id:s.id,code:s.code,name:s.display_name,specialty:s.specialty})),services:info.services.map(s=>({id:s.id,code:s.code,name:s.name,duration:s.duration_minutes,price:s.price_cents/100})),shifts:info.shifts,assignments:info.assignments,entries:entries.filter(e=>coveredInterval(e,day)).map(e=>({...e,local:coveredInterval(e,day)}))},origin);
  }
  if(req.method!=="POST")return err(405,"method_not_allowed",origin);
  const raw=await req.text();if(raw.length>12000)return err(413,"payload_too_large",origin);
@@ -111,6 +113,11 @@ Deno.serve(async(req)=>{
   return ok({confirmed:true,bookingId:inserted},origin);
  }
  const user=await authStaff(req);
+ if(["edit-profile","edit-shifts","absence-range","edit-entry"].includes(action)){
+  if(["edit-profile","edit-shifts"].includes(action)&&!["owner","manager"].includes(user.role))return err(403,"forbidden",origin);
+  const result=await db("rest/v1/rpc/avanti_manage_studio",{method:"POST",body:{p_salon:user.salonId,p_action:action,p_data:data}});
+  return ok(result,origin);
+ }
  if(action==="staff-book"){
   const row=await db("rest/v1/rpc/avanti_create_booking",{method:"POST",body:{
    p_staff_code:data.staffCode,p_service_code:data.serviceCode||null,p_day:data.day,p_start_minute:data.start,
