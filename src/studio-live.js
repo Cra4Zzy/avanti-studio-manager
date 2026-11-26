@@ -184,12 +184,13 @@ function render(silent=false){
  document.getElementById("legacy-brand").hidden=false;
  document.getElementById("login-brand").hidden=true;
  document.querySelectorAll("#studio-nav button").forEach(b=>b.setAttribute("aria-pressed",String((b.dataset.screen==="team")===teamPage)));
- const bar='<div class="workspace-live-tools"><span role="status" class="live-indicator '+(loadError?"live-error":"")+'">'+esc(loadError?"Abgleich fehlgeschlagen – letzter Stand":"Server verbunden")+'</span><div><button id="legacy-refresh">Aktualisieren</button><button id="legacy-quick" class="primary">+ Termin</button><button id="legacy-week" aria-pressed="'+(viewMode==="week")+'">'+(viewMode==="week"?"Tageskalender":"Wochenübersicht")+'</button></div></div>';
+ const bar='<div class="workspace-live-tools"><span role="status" class="live-indicator '+(loadError?"live-error":"")+'">'+esc(loadError?"Abgleich fehlgeschlagen – letzter Stand":"Server verbunden")+'</span><div><button id="legacy-refresh">Aktualisieren</button><button id="legacy-quick" class="primary">+ Termin</button>'+(["owner","manager"].includes(snapshot.user.role)?'<button id="legacy-closures" class="closure-shortcut">Feiertage &amp; Schließtage</button>':'')+'<button id="legacy-week" aria-pressed="'+(viewMode==="week")+'">'+(viewMode==="week"?"Tageskalender":"Wochenübersicht")+'</button></div></div>';
  root.innerHTML=bar+(!teamPage&&viewMode==="day"&&snapshot.closure?.closed?'<div class="holiday-banner"><strong>Salon geschlossen</strong><span>'+esc(snapshot.closure.name)+'</span></div>':"")+(teamPage?originalTeam():viewMode==="week"?'<section class="team-calendar"><div class="personal-top"><div><span class="personal-caption">TERMINPLANUNG</span><h1>Wochenübersicht</h1><p>'+esc(fullDate(weekStart(day)))+' – '+esc(fullDate(addDay(weekStart(day),6)))+'</p></div><div class="personal-weeknav"><button data-week-step="-1">‹</button><button data-person-today>Heute</button><button data-week-step="1">›</button></div></div>'+weekOverview(teamView?state.staff:state.staff.filter(s=>s.id===mobileStaff))+'</section>':teamView?teamCalendar():personalCalendar());
  if(!["owner","manager"].includes(snapshot.user.role)){document.querySelector('[data-screen="team"]').hidden=true;}
  else document.querySelector('[data-screen="team"]').hidden=false;
  document.querySelectorAll("#studio-nav button").forEach(b=>b.onclick=()=>{teamPage=b.dataset.screen==="team";render();});
  root.querySelector("#legacy-refresh").onclick=()=>load();
+ root.querySelector("#legacy-closures")?.addEventListener("click",()=>closureDialog());
  root.querySelector("#legacy-quick").onclick=()=>{if(!busy)quickBook();};
  root.querySelector("#legacy-week").onclick=()=>{teamPage=false;viewMode=viewMode==="week"?"day":"week";render();};
  root.querySelectorAll("[data-team-view]").forEach(b=>b.onclick=()=>{teamView=b.dataset.teamView==="all";viewMode="day";syncModel();render();});

@@ -117,3 +117,5 @@ jobs:
             curl --fail --silent --show-error --retry 3 --max-time 30 "https://studio.haarstudio-avanti.de/$file?revision=$GITHUB_SHA" -o /tmp/avanti-studio-live
             cmp "release/$file" /tmp/avanti-studio-live
           done
+          curl --fail --silent --show-error --retry 3 --max-time 30 -H "Cache-Control: no-cache" "https://studio.haarstudio-avanti.de/?revision=$GITHUB_SHA" -o /tmp/avanti-studio-root
+          cmp release/index.html /tmp/avanti-studio-root

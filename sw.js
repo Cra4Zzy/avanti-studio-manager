@@ -1,4 +1,7 @@
-// Network-only: never cache sessions, API responses, or customer data.
+// Never cache customer data or session responses. Always revalidate the app shell.
 self.addEventListener("install",()=>self.skipWaiting());
 self.addEventListener("activate",event=>event.waitUntil(self.clients.claim()));
-self.addEventListener("fetch",event=>{if(event.request.method==="GET"&&new URL(event.request.url).origin===self.location.origin)event.respondWith(fetch(event.request));});
+self.addEventListener("fetch",event=>{
+ const r=event.request;if(r.method!=="GET"||new URL(r.url).origin!==self.location.origin)return;
+ if(r.mode==="navigate"||["script","style","manifest"].includes(r.destination))event.respondWith(fetch(r,{cache:"no-store"}));
+});
