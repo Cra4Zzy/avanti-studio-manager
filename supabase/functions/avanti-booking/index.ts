@@ -72,7 +72,7 @@ function availability(info,day,serviceCode,staffCode,entries){
 }
 async function digest(source){const bytes=new TextEncoder().encode(source);const hash=await crypto.subtle.digest("SHA-256",bytes);return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,"0")).join("");}
 function knownError(e){const s=String(e?.message||"");if(s.includes("exclusion")||s.includes("calendar_entries_salon_id_staff_id")||e?.code==="23P01")return [409,"slot_taken"];
- const expected=["invalid_booking","invalid_day","invalid_customer_name","invalid_customer_email","invalid_customer_phone","email_required","service_unavailable","staff_unavailable","service_required","outside_working_hours","invalid_duration","invalid_block","invalid_profile","invalid_shifts","existing_appointments","entry_missing","time_in_past","rate_limited","rate_key_required"];
+ const expected=["invalid_booking","invalid_day","invalid_customer_name","invalid_customer_email","invalid_customer_phone","email_required","service_unavailable","staff_unavailable","service_required","outside_working_hours","invalid_duration","invalid_block","invalid_profile","invalid_photo","staff_has_appointments","invalid_shifts","existing_appointments","entry_missing","time_in_past","rate_limited","rate_key_required"];
  const x=expected.find(v=>s.includes(v));if(x)return [x==="rate_limited"?429:422,x];return [e?.status===401?401:e?.status===403?403:500,e?.status===401?"login_required":e?.status===403?"forbidden":"request_failed"];
 }
 Deno.serve(async(req)=>{
@@ -91,6 +91,14 @@ Deno.serve(async(req)=>{
   const info=await catalog();const occupied=await events(info.salon.id,date,false);
   return ok({day:date,service,staff,...availability(info,date,service,staff,occupied),publicBookingEnabled:Deno.env.get("AVANTI_PUBLIC_BOOKING_ENABLED")==="true"},origin);
  }
+ if(req.method==="GET"&&action==="team"){
+  const user=await authStaff(req);
+  const profiles=await db("rest/v1/staff?select=id,code,display_name,specialty,active&order=display_name.asc&salon_id=eq."+encodeURIComponent(user.salonId));
+  const allowed=profiles.filter(s=>s.code&& (s.active||["owner","manager"].includes(user.role)));
+  const ids=allowed.map(s=>s.id);
+  const portraits=ids.length?await db("rest/v1/avanti_staff_portraits?select=staff_id,photo&staff_id=in.("+ids.join(",")+")"):[];
+  return ok({team:allowed.map(s=>({id:s.id,code:s.code,name:s.display_name,specialty:s.specialty,active:s.active,photo:portraits.find(p=>p.staff_id===s.id)?.photo||null}))},origin);
+ }
  if(req.method==="GET"&&action==="studio"){
   const user=await authStaff(req);const day=url.searchParams.get("day")||berlinParts(new Date()).day;
   if(!dateOk(day)||day<"2020-01-01"||day>addDays(berlinParts(new Date()).day,365))return err(422,"invalid_day",origin);
@@ -98,7 +106,7 @@ Deno.serve(async(req)=>{
   return ok({user:{email:user.email,role:user.role},staff:info.staff.map(s=>({id:s.id,code:s.code,name:s.display_name,specialty:s.specialty})),services:info.services.map(s=>({id:s.id,code:s.code,name:s.name,duration:s.duration_minutes,price:s.price_cents/100})),shifts:info.shifts,assignments:info.assignments,entries:entries.filter(e=>coveredInterval(e,day)).map(e=>({...e,local:coveredInterval(e,day)}))},origin);
  }
  if(req.method!=="POST")return err(405,"method_not_allowed",origin);
- const raw=await req.text();if(raw.length>12000)return err(413,"payload_too_large",origin);
+ const raw=await req.text();if(raw.length>(["staff-create","staff-save"].includes(action)?110000:12000))return err(413,"payload_too_large",origin);
  let data;try{data=JSON.parse(raw)}catch{return err(400,"invalid_json",origin)}
  if(action==="book"){
   if(Deno.env.get("AVANTI_PUBLIC_BOOKING_ENABLED")!=="true")return err(409,"public_booking_disabled",origin);
@@ -113,6 +121,11 @@ Deno.serve(async(req)=>{
   return ok({confirmed:true,bookingId:inserted},origin);
  }
  const user=await authStaff(req);
+ if(["staff-create","staff-save","staff-archive","staff-restore"].includes(action)){
+  if(!["owner","manager"].includes(user.role))return err(403,"forbidden",origin);
+  const result=await db("rest/v1/rpc/avanti_manage_staff",{method:"POST",body:{p_salon:user.salonId,p_action:action,p_data:data}});
+  return ok(result,origin);
+ }
  if(["edit-profile","edit-shifts","absence-range","edit-entry"].includes(action)){
   if(["edit-profile","edit-shifts"].includes(action)&&!["owner","manager"].includes(user.role))return err(403,"forbidden",origin);
   const result=await db("rest/v1/rpc/avanti_manage_studio",{method:"POST",body:{p_salon:user.salonId,p_action:action,p_data:data}});
