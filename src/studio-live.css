@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
 :root{color-scheme:light;--ink:#2b2520;--muted:#6e665d;--line:#e4d8cc;--card:#fffdf9;--cream:#f6f0e8;--accent:#956a4b;--dark:#29211d}
 *{box-sizing:border-box}html{font-family:Manrope,system-ui,sans-serif}body{margin:0;background:#f7f3ed;color:var(--ink);min-height:100vh}button,input,select{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.48}a{color:inherit}button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #a47458;outline-offset:3px}
 .pilot-bar{height:29px;display:flex;align-items:center;justify-content:center;gap:9px;background:#372b23;color:#ead9c4;font-size:9px;font-weight:800;letter-spacing:.18em}.pilot-dot{width:6px;height:6px;background:#c5a582;border-radius:50%}.pilot-separator{opacity:.5}
