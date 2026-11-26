@@ -1,7 +1,7 @@
 // Avanti controlled pilot booking API. Service-role credentials never leave the server.
 const BASE=Deno.env.get("SUPABASE_URL")||"";
 const SECRET=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"";
-const ORIGINS=new Set(["https://cra4zzy.github.io","https://haarstudio-avanti.de","https://www.haarstudio-avanti.de","http://localhost:8080","http://127.0.0.1:8080"]);
+const ORIGINS=new Set(["https://studio.haarstudio-avanti.de","https://cra4zzy.github.io","https://haarstudio-avanti.de","https://www.haarstudio-avanti.de","http://localhost:8080","http://127.0.0.1:8080"]);
 const configuredOrigin=Deno.env.get("AVANTI_STUDIO_ORIGIN");
 if(configuredOrigin && /^https:\/\/[a-z0-9.-]+\.haarstudio-avanti\.de$/.test(configuredOrigin))ORIGINS.add(configuredOrigin);
 const ZONE="Europe/Berlin";
