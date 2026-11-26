@@ -14,10 +14,12 @@ const clock=t=>String(Math.floor(t/60)).padStart(2,"0")+":"+String(t%60).padStar
 const label=d=>new Intl.DateTimeFormat("de-DE",{weekday:"long",day:"numeric",month:"long",year:"numeric",timeZone:"UTC"}).format(new Date(d+"T00:00:00Z"));
 let token="",refresh="",expires=0,day=today(),snapshot=null,poll=null,busy=false,staffFilter="all",filterInitialized=false,lastLoadedDay=null,loadError="",sessionGeneration=0;
 
-let state={staff:[],appointments:[],absences:[],services:[]},weekData={},mobileStaff="",teamView=false,phoneMode=true,viewMode="day",teamPage=false,dragged=null;
+let teamProfiles=[],state={staff:[],appointments:[],absences:[],services:[]},weekData={},mobileStaff="",teamView=false,phoneMode=true,viewMode="day",teamPage=false,dragged=null;
 const addDays=addDay,time=clock,fullDate=label,weekStart=d=>addDay(d,-((new Date(d+"T00:00:00Z").getUTCDay()+6)%7));
 const activeStaff=s=>s.staff,staff=id=>state.staff.find(s=>s.id===id),treatment=a=>a.serviceName||"Telefontermin";
-const avatar=s=>'<span class="avatar" aria-hidden="true">'+esc(s.name.split(/\\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase())+'</span>';
+const initials=s=>'<span class="avatar" aria-hidden="true">'+esc(s.name.split(/\\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase())+'</span>';
+const validPortrait=p=>typeof p==="string"&&p.length<=100000&&/^data:image\/jpeg;base64,\/9j\/[A-Za-z0-9+/]+={0,2}$/.test(p);
+const avatar=s=>validPortrait(s.photo)?'<span class="avatar staff-photo" aria-hidden="true"><img alt="" src="'+esc(s.photo)+'"></span>':initials(s);
 const heading=(n,t,p,a="")=>'<div class="heading"><div><span class="eyebrow">'+n+'</span><h1>'+t+'</h1><p>'+p+'</p></div>'+a+'</div>';
 function dayShift(person,d){const shifts=snapshot.shifts.filter(s=>s.staff_id===person.id&&s.weekday===new Date(d+"T00:00:00Z").getUTCDay());return shifts.length?{start:Math.min(...shifts.map(x=>x.start_minute)),end:Math.max(...shifts.map(x=>x.end_minute))}:null;}
 function salonClosure(s,d){const rows=s.absences.filter(x=>x.day===d&&x.wholeDay);return s.staff.length&&s.staff.every(p=>rows.some(x=>x.staffId===p.id))?{name:"Salon geschlossen"}:null;}
@@ -36,7 +38,7 @@ function quickDay(s,{day:d,staffId},now=new Date()){
 }
 function freeSlots(s,{day:d,staffId,durationMinutes=15}){const items=quickDay(s,{day:d,staffId}),free=new Set(items.filter(x=>x.status==="free").map(x=>x.start));return items.filter(x=>x.status==="free"&&Array.from({length:durationMinutes/15},(_,i)=>x.start+i*15).every(t=>free.has(t))).map(x=>({start:x.start}));}
 function syncModel(){
- state.staff=snapshot.staff.map(p=>({...p,days:[...new Set(snapshot.shifts.filter(w=>w.staff_id===p.id).map(w=>w.weekday))]}));
+ state.staff=snapshot.staff.map(p=>({...p,photo:teamProfiles.find(t=>t.id===p.id)?.photo||null,days:[...new Set(snapshot.shifts.filter(w=>w.staff_id===p.id).map(w=>w.weekday))]}));
  state.services=snapshot.services;
  state.appointments=[];state.absences=[];
  for(const [date,data] of Object.entries(weekData))for(const e of data.entries){
@@ -49,7 +51,7 @@ function syncModel(){
 }
 
 const toast=s=>{const x=document.querySelector("#toast");x.textContent=s;x.classList.add("show");clearTimeout(x._timer);x._timer=setTimeout(()=>x.classList.remove("show"),3800)};
-const errorLabel=e=>({"existing_appointments":"Der neue Arbeitsplan würde bestehende Termine ausschließen. Bitte zuerst verschieben.","invalid_shifts":"Arbeitszeiten prüfen: keine Überschneidungen, 15-Minuten-Raster.","invalid_profile":"Bitte Name und Profil prüfen.","invalid_booking":"Bitte Datum, Uhrzeit und Dauer prüfen.","entry_missing":"Der Eintrag ist nicht mehr vorhanden.","forbidden":"Keine Berechtigung für diese Aktion.","staff_unavailable":"Mitarbeiterin nicht verfügbar.","slot_taken":"Der Zeitraum wurde inzwischen belegt. Bitte andere Zeit wählen.","invalid_day":"Datum ungültig.","time_in_past":"Diese Uhrzeit liegt bereits in der Vergangenheit.","outside_working_hours":"Die Behandlung passt nicht in die Arbeitszeit oder Pause.","login_required":"Bitte neu anmelden.","session_invalid":"Sitzung abgelaufen. Bitte neu anmelden.","service_unavailable":"Leistung nicht verfügbar.","rate_limited":"Zu viele Anfragen.","request_failed":"Serveranfrage fehlgeschlagen."}[e.message]||e.message);
+const errorLabel=e=>({"staff_has_appointments":"Diese Person hat noch zukünftige Termine. Bitte zuerst verschieben oder absagen.","invalid_photo":"Das Profilbild konnte nicht verarbeitet werden.","payload_too_large":"Das Bild ist zu groß. Bitte ein kleineres Foto wählen.","existing_appointments":"Der neue Arbeitsplan würde bestehende Termine ausschließen. Bitte zuerst verschieben.","invalid_shifts":"Arbeitszeiten prüfen: keine Überschneidungen, 15-Minuten-Raster.","invalid_profile":"Bitte Name und Profil prüfen.","invalid_booking":"Bitte Datum, Uhrzeit und Dauer prüfen.","entry_missing":"Der Eintrag ist nicht mehr vorhanden.","forbidden":"Keine Berechtigung für diese Aktion.","staff_unavailable":"Mitarbeiterin nicht verfügbar.","slot_taken":"Der Zeitraum wurde inzwischen belegt. Bitte andere Zeit wählen.","invalid_day":"Datum ungültig.","time_in_past":"Diese Uhrzeit liegt bereits in der Vergangenheit.","outside_working_hours":"Die Behandlung passt nicht in die Arbeitszeit oder Pause.","login_required":"Bitte neu anmelden.","session_invalid":"Sitzung abgelaufen. Bitte neu anmelden.","service_unavailable":"Leistung nicht verfügbar.","rate_limited":"Zu viele Anfragen.","request_failed":"Serveranfrage fehlgeschlagen."}[e.message]||e.message);
 async function request(action,{method="GET",body=null,session=token}={}){
  const path=API+"?action="+encodeURIComponent(action)+(method==="GET"&&body?.day?"&day="+encodeURIComponent(body.day):"");
  const res=await fetch(path,{method,headers:{"apikey":KEY,"Authorization":session?"Bearer "+session:"Bearer "+KEY,"Content-Type":"application/json"},body:method==="POST"?JSON.stringify(body):undefined,cache:"no-store"});
@@ -65,15 +67,15 @@ async function refreshAuth(){if(Date.now()<expires-60000)return;if(!refresh)thro
  if(!r.ok)throw Error("session_invalid");const data=await r.json();if(generation!==sessionGeneration)throw Error("session_invalid");token=data.access_token;refresh=data.refresh_token;expires=Date.now()+Number(data.expires_in||3000)*1000;
 }
 function login(){
- document.body.removeAttribute("data-screen");document.getElementById("legacy-style").media="not all";document.getElementById("studio-nav").hidden=true;document.getElementById("legacy-brand").hidden=true;document.getElementById("login-brand").hidden=false;weekData={};state={staff:[],appointments:[],absences:[],services:[]};teamPage=false;viewMode="day";teamView=false;sessionGeneration++;token="";refresh="";expires=0;snapshot=null;lastLoadedDay=null;loadError="";filterInitialized=false;staffFilter="all";clearInterval(poll);logout.hidden=true;account.textContent="";
+ document.body.removeAttribute("data-screen");document.getElementById("legacy-style").media="not all";document.getElementById("studio-nav").hidden=true;document.getElementById("legacy-brand").hidden=true;document.getElementById("login-brand").hidden=false;weekData={};teamProfiles=[];state={staff:[],appointments:[],absences:[],services:[]};teamPage=false;viewMode="day";teamView=false;sessionGeneration++;token="";refresh="";expires=0;snapshot=null;lastLoadedDay=null;loadError="";filterInitialized=false;staffFilter="all";clearInterval(poll);logout.hidden=true;account.textContent="";
  root.innerHTML='<div class="login-shell"><div class="login-intro"><div><span class="eyebrow">AVANTI / STUDIO MANAGER</span><h1>Dein Salon.<br>Dein Kalender.</h1></div><p>Alle Termine an einem Ort. Eintragen, sperren und freie Zeiten sofort über den gemeinsamen Server abgleichen.</p></div><div class="login-panel"><span class="eyebrow">GESCHÜTZTER MITARBEITERZUGANG</span><h2>Willkommen zurück.</h2><p>Melde dich mit deinem von der Salonleitung freigegebenen Konto an. Es werden keine Testpasswörter angelegt.</p><form id="login-form"><label>E-Mail-Adresse<input name="email" type="email" autocomplete="username" required></label><label>Passwort<input name="password" type="password" autocomplete="current-password" required></label><button class="primary">Verbinden & Kalender öffnen</button><div id="login-error" class="status-text" role="alert"></div></form><p class="subtle">Der Salonzugang wird einmalig von der Salonleitung eingerichtet. Keine öffentliche Registrierung.</p></div></div>';
  root.querySelector("#login-form").addEventListener("submit",async e=>{e.preventDefault();const f=e.currentTarget,b=f.querySelector("button"),status=f.querySelector("#login-error");b.disabled=true;status.textContent="";try{await authenticate(f.elements.email.value,f.elements.password.value);await load();poll=setInterval(()=>{if(token&&!dialog.open&&!document.hidden)load(true)},25000)}catch(err){status.textContent=errorLabel(err);token="";refresh="";expires=0}finally{b.disabled=false}});
 }
 async function load(silent=false){
  if(busy)return;busy=true;const requestedDay=day,generation=sessionGeneration;
- try{await refreshAuth();const dates=Array.from({length:7},(_,i)=>addDay(weekStart(requestedDay),i));const results=await Promise.all(dates.map(d=>request("studio",{body:{day:d}})));const fresh=Object.fromEntries(dates.map((d,i)=>[d,results[i]]));const x=fresh[requestedDay];
+ try{await refreshAuth();const dates=Array.from({length:7},(_,i)=>addDay(weekStart(requestedDay),i));const [results,teamResult]=await Promise.all([Promise.all(dates.map(d=>request("studio",{body:{day:d}}))),request("team")]);const fresh=Object.fromEntries(dates.map((d,i)=>[d,results[i]]));const x=fresh[requestedDay];
  if(generation!==sessionGeneration||!token)return;
- snapshot=x;weekData=fresh;syncModel();lastLoadedDay=requestedDay;loadError="";logout.hidden=false;account.textContent=x.user.email+" · "+x.user.role;render(silent);
+ snapshot=x;weekData=fresh;teamProfiles=teamResult.team;syncModel();lastLoadedDay=requestedDay;loadError="";logout.hidden=false;account.textContent=x.user.email+" · "+x.user.role;render(silent);
  }catch(e){if(generation!==sessionGeneration)return;if(["session_invalid","login_required","forbidden"].includes(e.message)){if(!snapshot)throw e;login();return;}loadError=errorLabel(e);if(lastLoadedDay&&snapshot){day=lastLoadedDay;render(true);}if(!silent)toast(loadError);if(!snapshot)throw e;}
  finally{busy=false}
 }
@@ -142,8 +144,33 @@ function teamCalendar(){
 function navigate(d){if(busy||!isDate(d)||d<addDay(today(),-365)||d>addDay(today(),359))return;day=d;load();}
 function openFromDate(d,id){if(!id)return;const x=weekData[d];if(!x)return;day=d;snapshot=x;syncModel();render();showEntry(id);}
 function openBlockFromDate(d,id){openFromDate(d,id);}
+
 function originalTeam(){
- return heading("AVANTI / TEAM","Team.","Mitarbeiterprofile verwalten · "+state.staff.length+" aktiv.")+'<section class="panel salon-settings"><div><h2>Betriebszeiten &amp; Schließtage</h2><p>Urlaub und Schließtage zentral verwalten.</p></div><button class="primary" data-team-absence>Schließtage verwalten</button></section><div class="grid">'+state.staff.map(s=>'<article class="panel"><div class="controls">'+avatar(s)+'<h2>'+esc(s.name)+'</h2></div><p>'+esc(s.specialty)+'</p><button data-profile="'+esc(s.code)+'">Profil bearbeiten</button><button class="shift-profile-button" data-shifts="'+esc(s.code)+'">Arbeitszeiten bearbeiten</button><button data-vacation="'+esc(s.id)+'">Urlaub eintragen</button></article>').join("")+'</div>';
+ const active=teamProfiles.filter(s=>s.active),archived=teamProfiles.filter(s=>!s.active);
+ const card=s=>'<article class="panel staff-card"><div class="staff-card-head">'+avatar(s)+'<div><h2>'+esc(s.name)+'</h2><p>'+esc(s.specialty||"Kein Schwerpunkt eingetragen")+'</p></div></div><span class="staff-status '+(s.active?'is-active':'is-archived')+'">'+(s.active?'Aktiv':'Archiviert')+'</span><button class="primary" data-profile="'+esc(s.code)+'">Profil &amp; Foto bearbeiten</button>'+(s.active?'<button class="shift-profile-button" data-shifts="'+esc(s.code)+'">Arbeitszeiten bearbeiten</button><button data-vacation="'+esc(s.id)+'">Urlaub eintragen</button><button class="staff-danger" data-archive="'+esc(s.code)+'">Mitarbeiter entfernen</button>':'<button data-restore="'+esc(s.code)+'">Wieder aktivieren</button>')+'</article>';
+ return '<div class="staff-heading">'+heading("AVANTI / TEAM","Mitarbeiterverwaltung",active.length+" aktiv · "+archived.length+" archiviert")+'<button class="primary" id="staff-create">+ Mitarbeiter anlegen</button></div><section class="panel salon-settings"><div><h2>Betriebszeiten &amp; Schließtage</h2><p>Urlaub und Schließtage zentral verwalten.</p></div><button class="primary" data-team-absence>Schließtage verwalten</button></section><h2 class="staff-section-title">Aktives Team</h2><div class="grid">'+(active.map(card).join("")||'<p>Keine aktiven Mitarbeiter. Lege ein neues Profil an.</p>')+'</div>'+(archived.length?'<details class="staff-archive"><summary>Archivierte Mitarbeiter ('+archived.length+')</summary><p>Diese Profile sind nicht buchbar. Ihre Terminhistorie bleibt erhalten.</p><div class="grid">'+archived.map(card).join("")+'</div></details>':'');
+}
+async function changeStaff(code,restore){
+ const p=teamProfiles.find(s=>s.code===code);if(!p||busy)return;
+ if(!confirm(restore?p.name+" wieder aktivieren?":p.name+" aus dem aktiven Team entfernen? Die Historie bleibt erhalten."))return;
+ try{await refreshAuth();await request(restore?"staff-restore":"staff-archive",{method:"POST",body:{staffCode:code}});toast(restore?"Profil wieder aktiviert.":"Profil archiviert.");await load();}catch(e){toast(errorLabel(e));}
+}
+async function preparePortrait(file){
+ if(!file||!["image/jpeg","image/png","image/webp"].includes(file.type)||file.size>15000000)throw Error("Bitte ein JPG-, PNG- oder WebP-Bild bis 15 MB auswählen.");
+ const url=URL.createObjectURL(file);try{const img=new Image();img.src=url;await img.decode();const side=Math.min(img.naturalWidth,img.naturalHeight);if(!side)throw Error("Bild ungültig.");
+ const canvas=document.createElement("canvas");canvas.width=canvas.height=256;const ctx=canvas.getContext("2d");ctx.fillStyle="#f5f3ed";ctx.fillRect(0,0,256,256);ctx.drawImage(img,(img.naturalWidth-side)/2,(img.naturalHeight-side)/2,side,side,0,0,256,256);
+ for(const quality of [.86,.72,.55,.4]){const data=canvas.toDataURL("image/jpeg",quality);if(validPortrait(data))return data;}throw Error("Profilbild konnte nicht verkleinert werden.");
+ }finally{URL.revokeObjectURL(url);}
+}
+function staffEditor(person=null){
+ let photo=person?.photo||null,changed=false,processing=false;
+ replaceDialog(person?"Mitarbeiter bearbeiten":"Mitarbeiter anlegen",person?.name||"Neues Teamprofil",'<form class="entry-form staff-editor"><div class="staff-photo-editor"><div id="staff-photo-preview">'+avatar({name:person?.name||"Neu",photo})+'</div><div><label>Profilfoto<input type="file" name="portrait" accept="image/jpeg,image/png,image/webp"></label><button type="button" id="remove-photo">Foto entfernen</button><p class="subtle">JPG, PNG oder WebP · automatisch quadratisch zugeschnitten.</p></div></div><label>Name<input name="name" maxlength="80" value="'+esc(person?.name||"")+'" required></label><label>Schwerpunkt<input name="specialty" maxlength="100" value="'+esc(person?.specialty||"")+'"></label>'+(!person?'<p class="subtle">Neue Mitarbeiter sind zunächst ohne Arbeitszeiten angelegt. Trage anschließend den Wochenplan ein. Die aktiven Leistungen werden zugeordnet.</p>':'')+'<p class="dialog-error" role="alert"></p><button class="primary" type="submit">Profil speichern</button></form>');
+ const form=dialog.querySelector("form"),f=form.elements,submit=form.querySelector('[type=submit]'),error=form.querySelector(".dialog-error");
+ const preview=()=>{form.querySelector("#staff-photo-preview").innerHTML=avatar({name:f.name.value||"Neu",photo});form.querySelector("#remove-photo").disabled=!photo;};
+ f.name.oninput=preview;
+ f.portrait.onchange=async()=>{if(!f.portrait.files[0])return;processing=true;submit.disabled=true;error.textContent="";try{photo=await preparePortrait(f.portrait.files[0]);changed=true;preview();}catch(e){error.textContent=e.message;}finally{processing=false;submit.disabled=false;f.portrait.value="";}};
+ form.querySelector("#remove-photo").onclick=()=>{if(processing)return;photo=null;changed=true;preview();};preview();
+ bindSave(person?"staff-save":"staff-create",f=>{if(processing)throw Error("Bild wird verarbeitet.");return {...(person?{staffCode:person.code}:{}),name:f.name.value,specialty:f.specialty.value,...(changed?{photo}:{})};},person?"Profil gespeichert.":"Mitarbeiter angelegt. Bitte Arbeitszeiten festlegen.");
 }
 function render(silent=false){
  if(dialog.open||!snapshot)return;
@@ -174,7 +201,10 @@ function render(silent=false){
  root.querySelectorAll("[data-vacation]").forEach(b=>b.onclick=()=>{if(busy)return;const p=staff(b.dataset.vacation);staffFilter=p?.code||"all";absenceDialog();});
  root.querySelector("[data-team-absence]")?.addEventListener("click",()=>{staffFilter="all";absenceDialog();});
  root.querySelector("[data-toggle-day]")?.addEventListener("click",()=>{const p=staff(mobileStaff),block=snapshot.entries.find(e=>e.staff_id===p?.id&&e.kind==="absence"&&e.local.start===0&&e.local.end===1440);if(block)showEntry(block.id);else {staffFilter=p?.code||"all";absenceDialog();}});
- root.querySelectorAll("[data-profile]").forEach(b=>b.onclick=()=>profileDialog(snapshot.staff.find(p=>p.code===b.dataset.profile)));
+ root.querySelector("#staff-create")?.addEventListener("click",()=>staffEditor());
+ root.querySelectorAll("[data-profile]").forEach(b=>b.onclick=()=>staffEditor(teamProfiles.find(p=>p.code===b.dataset.profile)));
+ root.querySelectorAll("[data-archive]").forEach(b=>b.onclick=()=>changeStaff(b.dataset.archive,false));
+ root.querySelectorAll("[data-restore]").forEach(b=>b.onclick=()=>changeStaff(b.dataset.restore,true));
  root.querySelectorAll("[data-shifts]").forEach(b=>b.onclick=()=>shiftsDialog(snapshot.staff.find(p=>p.code===b.dataset.shifts)));
  root.querySelectorAll('[draggable="true"][data-edit]').forEach(b=>{b.ondragstart=e=>{dragged=b.dataset.edit;e.dataTransfer.setData("text/plain",dragged);e.dataTransfer.effectAllowed="move";};b.ondragend=()=>dragged=null;});
  root.querySelectorAll("[data-overview-slot],[data-phone-slot],[data-toggle-slot]").forEach(b=>{b.ondragover=e=>{if(dragged){e.preventDefault();e.dataTransfer.dropEffect="move";}};b.ondrop=async e=>{e.preventDefault();if(!dragged||busy)return;const x=snapshot.entries.find(a=>a.id===dragged&&a.kind==="appointment");const p=staff(b.dataset.overviewStaff||mobileStaff),t=Number(b.dataset.overviewSlot??b.dataset.phoneSlot??b.dataset.toggleSlot);dragged=null;if(!x||!p||!Number.isFinite(t)||!confirm("Termin auf "+p.name+" · "+clock(t)+" verschieben?"))return;try{await refreshAuth();await request("edit-entry",{method:"POST",body:{id:x.id,name:x.customer_name,phone:x.customer_phone||"",staffCode:p.code,day,start:t,duration:x.local.end-x.local.start}});toast("Termin verschoben.");await load();}catch(err){toast(errorLabel(err));}};});
@@ -210,7 +240,7 @@ const durationOptions=(selected=30)=>Array.from({length:32},(_,i)=>(i+1)*15).map
 function replaceDialog(title,context,body){if(dialog.open)dialog.close();openDialog(header(title,context)+body);}
 function bindSave(action,read,success,onDone){
  const form=dialog.querySelector("form");form.onsubmit=async e=>{e.preventDefault();const b=form.querySelector('[type=submit]');const error=form.querySelector(".dialog-error");b.disabled=true;error.textContent="";
- try{const body=read(form.elements);await refreshAuth();await request(action,{method:"POST",body});dialog.close();toast(success);if(onDone)onDone(body);await load();}
+ try{const body=await read(form.elements);await refreshAuth();await request(action,{method:"POST",body});dialog.close();toast(success);if(onDone)onDone(body);await load();}
  catch(err){error.textContent=errorLabel(err);}finally{b.disabled=false}};
 }
 function minuteInput(v){if(!/^\d{2}:\d{2}$/.test(v))throw Error("Bitte Uhrzeit eingeben.");const [h,m]=v.split(":").map(Number);if(m%15)throw Error("Bitte eine Uhrzeit im 15-Minuten-Raster wählen.");return h*60+m;}
