@@ -6,7 +6,7 @@ out = root / "release"
 if out.exists(): shutil.rmtree(out)
 out.mkdir()
 files = ("index.html", "src/studio-live.js", "src/studio-live.css", "src/install.js",
-         "assets/studio-icon.svg", "manifest.webmanifest", "sw.js")
+         "assets/studio-icon.svg", "manifest.webmanifest", "sw.js", "styles.css", "src/studio-original.css")
 for name in files:
     src = root / name
     assert src.is_file() and src.stat().st_size, name

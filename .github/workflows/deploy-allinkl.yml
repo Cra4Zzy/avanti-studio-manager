@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - index.html
+      - styles.css
       - 'src/**'
       - 'assets/studio-icon*'
       - manifest.webmanifest
@@ -104,6 +105,7 @@ jobs:
           mirror -R --no-perms release/assets /assets
           put release/manifest.webmanifest -o /manifest.webmanifest
           put release/sw.js -o /sw.js
+          put release/styles.css -o /styles.css
           put release/index.html -o /index.html
           put release/build-info.json -o /build-info.json
           bye
@@ -111,7 +113,7 @@ jobs:
       - name: Verify the actual published studio over HTTPS
         run: |
           set -eu
-          for file in index.html src/studio-live.js src/studio-live.css src/install.js assets/studio-icon.svg manifest.webmanifest sw.js build-info.json; do
+          for file in index.html styles.css src/studio-original.css src/studio-live.js src/studio-live.css src/install.js assets/studio-icon.svg manifest.webmanifest sw.js build-info.json; do
             curl --fail --silent --show-error --retry 3 --max-time 30 "https://studio.haarstudio-avanti.de/$file?revision=$GITHUB_SHA" -o /tmp/avanti-studio-live
             cmp "release/$file" /tmp/avanti-studio-live
           done

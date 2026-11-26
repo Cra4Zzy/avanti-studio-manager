@@ -13,6 +13,41 @@ const isDate=d=>/^\d{4}-\d\d-\d\d$/.test(d)&&new Date(d+"T00:00:00Z").toISOStrin
 const clock=t=>String(Math.floor(t/60)).padStart(2,"0")+":"+String(t%60).padStart(2,"0");
 const label=d=>new Intl.DateTimeFormat("de-DE",{weekday:"long",day:"numeric",month:"long",year:"numeric",timeZone:"UTC"}).format(new Date(d+"T00:00:00Z"));
 let token="",refresh="",expires=0,day=today(),snapshot=null,poll=null,busy=false,staffFilter="all",filterInitialized=false,lastLoadedDay=null,loadError="",sessionGeneration=0;
+
+let state={staff:[],appointments:[],absences:[],services:[]},weekData={},mobileStaff="",teamView=false,phoneMode=true,viewMode="day",teamPage=false,dragged=null;
+const addDays=addDay,time=clock,fullDate=label,weekStart=d=>addDay(d,-((new Date(d+"T00:00:00Z").getUTCDay()+6)%7));
+const activeStaff=s=>s.staff,staff=id=>state.staff.find(s=>s.id===id),treatment=a=>a.serviceName||"Telefontermin";
+const avatar=s=>'<span class="avatar" aria-hidden="true">'+esc(s.name.split(/\\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase())+'</span>';
+const heading=(n,t,p,a="")=>'<div class="heading"><div><span class="eyebrow">'+n+'</span><h1>'+t+'</h1><p>'+p+'</p></div>'+a+'</div>';
+function dayShift(person,d){const shifts=snapshot.shifts.filter(s=>s.staff_id===person.id&&s.weekday===new Date(d+"T00:00:00Z").getUTCDay());return shifts.length?{start:Math.min(...shifts.map(x=>x.start_minute)),end:Math.max(...shifts.map(x=>x.end_minute))}:null;}
+function salonClosure(s,d){const rows=s.absences.filter(x=>x.day===d&&x.wholeDay);return s.staff.length&&s.staff.every(p=>rows.some(x=>x.staffId===p.id))?{name:"Salon geschlossen"}:null;}
+function quickDay(s,{day:d,staffId},now=new Date()){
+ const p=staff(staffId),snap=weekData[d],shift=dayShift(p,d);
+ if(!snap)return [];
+ const es=snap.entries.filter(e=>e.staff_id===staffId),spans=snapshot.shifts.filter(w=>w.staff_id===staffId&&w.weekday===new Date(d+"T00:00:00Z").getUTCDay());
+ const first=Math.min(shift?.start??540,...es.filter(e=>e.kind==="appointment"||e.local.end-e.local.start<1440).map(e=>Math.floor(e.local.start/15)*15));
+ const last=Math.max(shift?.end??1080,...es.filter(e=>e.kind==="appointment"||e.local.end-e.local.start<1440).map(e=>Math.ceil(e.local.end/15)*15));
+ if(!shift&&!es.length)return [];
+ return Array.from({length:Math.max(0,Math.ceil((last-first)/15))},(_,i)=>{const t=first+i*15,e=es.find(e=>t<e.local.end&&t+15>e.local.start);let status;
+ if(e){status=e.kind==="appointment"?"booked":e.local.start===0&&e.local.end===1440?(salonClosure(s,d)?"closed":"wholeDay"): "absence";}
+ else if(!spans.some(w=>t>=w.start_minute&&t+15<=w.end_minute))status=shift&&t>=shift.start&&t<shift.end?"pause":"off";
+ else status=d<today()||d===today()&&t<=minute()?"past":"free";
+ return {start:t,end:t+15,status,appointmentId:e?.id,blockId:e?.id,source:e?.source,label:e?.kind==="appointment"?e.customer_name:e?.note};});
+}
+function freeSlots(s,{day:d,staffId,durationMinutes=15}){const items=quickDay(s,{day:d,staffId}),free=new Set(items.filter(x=>x.status==="free").map(x=>x.start));return items.filter(x=>x.status==="free"&&Array.from({length:durationMinutes/15},(_,i)=>x.start+i*15).every(t=>free.has(t))).map(x=>({start:x.start}));}
+function syncModel(){
+ state.staff=snapshot.staff.map(p=>({...p,days:[...new Set(snapshot.shifts.filter(w=>w.staff_id===p.id).map(w=>w.weekday))]}));
+ state.services=snapshot.services;
+ state.appointments=[];state.absences=[];
+ for(const [date,data] of Object.entries(weekData))for(const e of data.entries){
+ const base={id:e.id,day:date,staffId:e.staff_id,start:e.local.start,end:e.local.end,source:e.source};
+ if(e.kind==="appointment")state.appointments.push({...base,status:e.status,name:e.customer_name,serviceName:e.service_name_snapshot});
+ else state.absences.push({...base,reason:e.note||"Gesperrt",wholeDay:e.local.start===0&&e.local.end===1440});
+ }
+ if(!state.staff.some(s=>s.id===mobileStaff))mobileStaff=state.staff[0]?.id||"";
+ staffFilter=teamView?"all":staff(mobileStaff)?.code||"all";
+}
+
 const toast=s=>{const x=document.querySelector("#toast");x.textContent=s;x.classList.add("show");clearTimeout(x._timer);x._timer=setTimeout(()=>x.classList.remove("show"),3800)};
 const errorLabel=e=>({"existing_appointments":"Der neue Arbeitsplan würde bestehende Termine ausschließen. Bitte zuerst verschieben.","invalid_shifts":"Arbeitszeiten prüfen: keine Überschneidungen, 15-Minuten-Raster.","invalid_profile":"Bitte Name und Profil prüfen.","invalid_booking":"Bitte Datum, Uhrzeit und Dauer prüfen.","entry_missing":"Der Eintrag ist nicht mehr vorhanden.","forbidden":"Keine Berechtigung für diese Aktion.","staff_unavailable":"Mitarbeiterin nicht verfügbar.","slot_taken":"Der Zeitraum wurde inzwischen belegt. Bitte andere Zeit wählen.","invalid_day":"Datum ungültig.","time_in_past":"Diese Uhrzeit liegt bereits in der Vergangenheit.","outside_working_hours":"Die Behandlung passt nicht in die Arbeitszeit oder Pause.","login_required":"Bitte neu anmelden.","session_invalid":"Sitzung abgelaufen. Bitte neu anmelden.","service_unavailable":"Leistung nicht verfügbar.","rate_limited":"Zu viele Anfragen.","request_failed":"Serveranfrage fehlgeschlagen."}[e.message]||e.message);
 async function request(action,{method="GET",body=null,session=token}={}){
@@ -30,15 +65,15 @@ async function refreshAuth(){if(Date.now()<expires-60000)return;if(!refresh)thro
  if(!r.ok)throw Error("session_invalid");const data=await r.json();if(generation!==sessionGeneration)throw Error("session_invalid");token=data.access_token;refresh=data.refresh_token;expires=Date.now()+Number(data.expires_in||3000)*1000;
 }
 function login(){
- sessionGeneration++;token="";refresh="";expires=0;snapshot=null;lastLoadedDay=null;loadError="";filterInitialized=false;staffFilter="all";clearInterval(poll);logout.hidden=true;account.textContent="";
+ document.body.removeAttribute("data-screen");document.getElementById("legacy-style").media="not all";document.getElementById("studio-nav").hidden=true;document.getElementById("legacy-brand").hidden=true;document.getElementById("login-brand").hidden=false;weekData={};state={staff:[],appointments:[],absences:[],services:[]};teamPage=false;viewMode="day";teamView=false;sessionGeneration++;token="";refresh="";expires=0;snapshot=null;lastLoadedDay=null;loadError="";filterInitialized=false;staffFilter="all";clearInterval(poll);logout.hidden=true;account.textContent="";
  root.innerHTML='<div class="login-shell"><div class="login-intro"><div><span class="eyebrow">AVANTI / STUDIO MANAGER</span><h1>Dein Salon.<br>Dein Kalender.</h1></div><p>Alle Termine an einem Ort. Eintragen, sperren und freie Zeiten sofort über den gemeinsamen Server abgleichen.</p></div><div class="login-panel"><span class="eyebrow">GESCHÜTZTER MITARBEITERZUGANG</span><h2>Willkommen zurück.</h2><p>Melde dich mit deinem von der Salonleitung freigegebenen Konto an. Es werden keine Testpasswörter angelegt.</p><form id="login-form"><label>E-Mail-Adresse<input name="email" type="email" autocomplete="username" required></label><label>Passwort<input name="password" type="password" autocomplete="current-password" required></label><button class="primary">Verbinden & Kalender öffnen</button><div id="login-error" class="status-text" role="alert"></div></form><p class="subtle">Der Salonzugang wird einmalig von der Salonleitung eingerichtet. Keine öffentliche Registrierung.</p></div></div>';
  root.querySelector("#login-form").addEventListener("submit",async e=>{e.preventDefault();const f=e.currentTarget,b=f.querySelector("button"),status=f.querySelector("#login-error");b.disabled=true;status.textContent="";try{await authenticate(f.elements.email.value,f.elements.password.value);await load();poll=setInterval(()=>{if(token&&!dialog.open&&!document.hidden)load(true)},25000)}catch(err){status.textContent=errorLabel(err);token="";refresh="";expires=0}finally{b.disabled=false}});
 }
 async function load(silent=false){
  if(busy)return;busy=true;const requestedDay=day,generation=sessionGeneration;
- try{await refreshAuth();const x=await request("studio",{body:{day}});
+ try{await refreshAuth();const dates=Array.from({length:7},(_,i)=>addDay(weekStart(requestedDay),i));const results=await Promise.all(dates.map(d=>request("studio",{body:{day:d}})));const fresh=Object.fromEntries(dates.map((d,i)=>[d,results[i]]));const x=fresh[requestedDay];
  if(generation!==sessionGeneration||!token)return;
- snapshot=x;lastLoadedDay=requestedDay;loadError="";logout.hidden=false;account.textContent=x.user.email+" · "+x.user.role;render(silent);
+ snapshot=x;weekData=fresh;syncModel();lastLoadedDay=requestedDay;loadError="";logout.hidden=false;account.textContent=x.user.email+" · "+x.user.role;render(silent);
  }catch(e){if(generation!==sessionGeneration)return;if(["session_invalid","login_required","forbidden"].includes(e.message)){if(!snapshot)throw e;login();return;}loadError=errorLabel(e);if(lastLoadedDay&&snapshot){day=lastLoadedDay;render(true);}if(!silent)toast(loadError);if(!snapshot)throw e;}
  finally{busy=false}
 }
@@ -51,44 +86,101 @@ function blocked(staff,t,end){
  return "free";
 }
 function freeFor(staff,t,len){if(t+len>1440)return false;for(let at=t;at<t+len;at+=15)if(blocked(staff,at,at+15)!=="free")return false;return true;}
-function render(silent=false){
- if(dialog.open||!snapshot)return; if(silent&&root.querySelector(".workspace-card")&&["INPUT","SELECT"].includes(document.activeElement?.tagName)&&!loadError)return;
- const all=snapshot.staff,previous=root.querySelector(".calendar-scroll"),scrollTop=previous?.scrollTop||0,scrollLeft=previous?.scrollLeft||0;
- if(!filterInitialized){staffFilter=matchMedia("(max-width: 700px)").matches?(all[0]?.code||"all"):"all";filterInitialized=true;}
- if(staffFilter!=="all"&&!all.some(x=>x.code===staffFilter))staffFilter="all";
- const members=staffFilter==="all"?all:all.filter(x=>x.code===staffFilter);
- const ids=new Set(members.map(x=>x.id)),entries=snapshot.entries.filter(e=>e.kind==="appointment"&&ids.has(e.staff_id)),locks=snapshot.entries.filter(e=>e.kind==="absence"&&ids.has(e.staff_id));
- const shifts=snapshot.shifts.filter(w=>ids.has(w.staff_id)&&w.weekday===new Date(day+"T00:00:00Z").getUTCDay());
- const first=Math.min(480,...shifts.map(w=>Math.floor(w.start_minute/15)*15),...snapshot.entries.filter(e=>e.kind==="appointment"&&ids.has(e.staff_id)).map(e=>Math.floor(e.local.start/15)*15)),last=Math.min(1440,Math.max(1140,...shifts.map(w=>Math.ceil(w.end_minute/15)*15),...snapshot.entries.filter(e=>e.kind==="appointment"&&ids.has(e.staff_id)).map(e=>Math.ceil(e.local.end/15)*15)));
- const freeCount=members.reduce((sum,m)=>sum+Array.from({length:(last-first)/15},(_,i)=>first+i*15).filter(t=>blocked(m,t,t+15)==="free").length,0);
- const initials=name=>String(name||"").split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase();
- const weekStart=addDay(day,-((new Date(day+"T00:00:00Z").getUTCDay()+6)%7));
- const week=Array.from({length:7},(_,i)=>addDay(weekStart,i)).map(d=>'<button type="button" class="week-chip" data-date="'+d+'" aria-pressed="'+(d===day)+'" '+(d<today()||d>addDay(today(),365)?'disabled':'')+'><span>'+esc(new Intl.DateTimeFormat("de-DE",{weekday:"short",timeZone:"UTC"}).format(new Date(d+"T00:00:00Z")))+'</span><strong>'+Number(d.slice(-2))+'</strong>'+(d===today()?'<small>Heute</small>':'')+'</button>').join("");
- root.innerHTML='<section class="workspace-hero"><div><span class="eyebrow">AVANTI · STUDIO MANAGER</span><h1>Salonkalender</h1><p>Termine und freie Zeiten auf einen Blick.</p></div><div class="sync-pill '+(loadError?'sync-error':'')+'" role="status"><i></i>'+esc(loadError?'Abgleich fehlgeschlagen · letzter Stand':'Server verbunden · Abgleich alle 25 s')+'</div></section>'+
- '<div class="stats"><div class="stat"><small>Termine</small><strong>'+entries.length+'</strong><span>Am ausgewählten Tag</span></div><div class="stat stat-free"><small>Freie 15-Min.-Slots</small><strong>'+freeCount+'</strong><span>In der aktuellen Auswahl</span></div><div class="stat stat-lock"><small>Zeitsperren</small><strong>'+locks.length+'</strong><span>Aktuell blockiert</span></div></div>'+
- '<section class="workspace-card"><div class="toolbar"><div class="day-controls"><button data-step="-1" aria-label="Vortag" '+(day<=today()?'disabled':'')+'>‹</button><button class="today-button" data-date="'+today()+'">Heute</button><button data-step="1" aria-label="Nächster Tag" '+(day>=addDay(today(),365)?'disabled':'')+'>›</button></div><div class="date-title"><strong>'+esc(label(day))+'</strong><input type="date" id="date" value="'+esc(day)+'" min="'+today()+'" max="'+addDay(today(),365)+'" aria-label="Datum wählen"></div><button class="refresh" id="refresh" aria-label="Kalender aktualisieren">↻ <span>Aktualisieren</span></button></div>'+
- '<div class="week-strip" aria-label="Wochentage">'+week+'</div>'+
- '<div class="filter-line"><div><label for="staff-filter">Mitarbeiterin</label><select id="staff-filter"><option value="all" '+(staffFilter==="all"?'selected':'')+'>Gesamtes Team</option>'+all.map(m=>'<option value="'+esc(m.code)+'" '+(staffFilter===m.code?'selected':'')+'>'+esc(m.name)+'</option>').join("")+'</select></div><div class="legend"><span><i class="l-free"></i>Frei</span><span><i class="l-booked"></i>Termin</span><span><i class="l-block"></i>Gesperrt</span><span><i class="l-off"></i>Außer Dienst / Pause</span></div></div>'+
- '<div class="calendar-help">Freie Zeit antippen, um einen Telefontermin anzulegen oder die Zeit zu sperren.</div>'+
- (members.length?'<div class="calendar-scroll" tabindex="0" aria-label="Tageskalender"><div class="calendar-grid" style="--team-count:'+members.length+'"><div class="cal-corner">Uhrzeit</div>'+members.map(x=>'<div class="cal-head"><span class="person-initial">'+esc(initials(x.name))+'</span><div><strong>'+esc(x.name)+'</strong><small>'+esc(x.specialty||"Mitarbeiterin")+'</small></div></div>').join("")+
- Array.from({length:(last-first)/15},(_,i)=>{const at=first+i*15;return '<div class="cal-time '+(at%60===0?'hour':'')+'">'+clock(at)+'</div>'+members.map(member=>{const v=blocked(member,at,at+15),isEntry=typeof v==="object",status=isEntry?(v.kind==="absence"?"absence":"booked"):v;const lead=isEntry&&at===Math.max(first,Math.floor(v.local.start/15)*15),name=isEntry?(v.kind==="absence"?"Gesperrt":(v.customer_name||"Termin")):(v==="free"?"+ Frei":v==="past"?"Vergangen":"");const detail=lead?(clock(v.local.start)+"–"+clock(v.local.end)+(v.kind==="appointment"&&v.service_name_snapshot?" · "+v.service_name_snapshot:"")):"";const attr=isEntry?'data-entry="'+esc(v.id)+'"':v==="free"?'data-free="'+at+'" data-staff="'+esc(member.code)+'"':'disabled';return '<button type="button" class="cal-cell '+status+(at%60===0?" hour":"")+(isEntry&&!lead?" continuation":"")+'" '+attr+' aria-label="'+esc(member.name+" "+clock(at)+" "+name)+'"><span class="label">'+esc(isEntry&&!lead?"":name)+'</span>'+(detail?'<small>'+esc(detail)+'</small>':"")+'</button>'}).join("")}).join("")+'</div></div>':'<p class="notice">Noch keine Mitarbeiterprofile vorhanden.</p>')+
- '</section><p class="subtle">Gemeinsamer Salonkalender · Änderungen werden zentral gespeichert.</p>';
- function navigate(d){if(busy||d<today()||d>addDay(today(),365))return;day=d;load();}
- root.querySelectorAll("[data-step]").forEach(b=>b.onclick=()=>navigate(addDay(day,Number(b.dataset.step))));
- root.querySelectorAll("[data-date]").forEach(b=>b.onclick=()=>navigate(b.dataset.date));
- root.querySelector("#date").onchange=e=>{if(busy){e.target.value=day;return;}if(isDate(e.target.value))navigate(e.target.value)};
- root.querySelector("#refresh").onclick=()=>load();
- const tools=document.createElement("div");tools.className="studio-tools";
- tools.innerHTML='<button type="button" class="primary" id="quick-book">+ Telefontermin</button><button type="button" id="absence-range">Urlaub / Schließtag</button>'+(['owner','manager'].includes(snapshot.user.role)?'<button type="button" id="team-settings">Team & Arbeitszeiten</button>':'');
- root.querySelector(".workspace-card").before(tools);
- tools.querySelector("#quick-book").onclick=()=>quickBook();
- tools.querySelector("#absence-range").onclick=()=>absenceDialog();
- if(tools.querySelector("#team-settings"))tools.querySelector("#team-settings").onclick=()=>teamDialog();
- root.querySelector("#staff-filter").onchange=e=>{staffFilter=e.target.value;e.target.blur();render(true);root.querySelector("#staff-filter").focus()};
- root.querySelectorAll("[data-free]").forEach(b=>b.onclick=()=>{if(!busy)choice(b.dataset.staff,Number(b.dataset.free))});
- root.querySelectorAll("[data-entry]").forEach(b=>b.onclick=()=>{if(!busy)showEntry(b.dataset.entry)});
- if(silent&&previous){const current=root.querySelector(".calendar-scroll");if(current){current.scrollTop=scrollTop;current.scrollLeft=scrollLeft;}}
+function weekOverview(members){
+ const first=weekStart(day),days=Array.from({length:7},(_,i)=>addDays(first,i)),ids=new Set(members.map(s=>s.id));
+ const all=state.appointments.filter(a=>a.status==='confirmed'&&ids.has(a.staffId)&&days.includes(a.day));
+ const blocked=state.absences.filter(a=>ids.has(a.staffId)&&days.includes(a.day));
+ const duration=all.reduce((sum,a)=>sum+a.end-a.start,0);
+ const cards=days.map(date=>{
+  const entries=[...all.filter(a=>a.day===date).map(a=>({...a,kind:'appointment'})),...blocked.filter(a=>a.day===date).map(a=>({...a,kind:'block'}))].sort((a,b)=>a.start-b.start||a.staffId.localeCompare(b.staffId));
+  const working=members.filter(s=>s.days.includes(new Date(date+'T00:00:00Z').getUTCDay()));
+  const count=entries.filter(a=>a.kind==='appointment').length;
+  const next=working.flatMap(s=>freeSlots(state,{day:date,staffId:s.id,durationMinutes:30})).sort((a,b)=>a.start-b.start)[0];
+  const parts=entries.map(a=>'<button class="week-entry '+(a.kind==='block'?'week-block':a.source==='online'?'week-online':'week-manual')+'" '+(a.kind==='block'?'data-block-edit':'data-edit')+'="'+esc(a.id)+'"><span class="week-time">'+time(a.start)+' – '+time(a.end)+'</span><strong>'+esc(a.kind==='block'?a.reason:a.name)+'</strong><small>'+esc(staff(a.staffId)?.name||'')+(a.kind==='appointment'?' · '+esc(treatment(a)):' · Gesperrt')+'</small></button>').join('');
+  return '<article class="week-card '+(date===today()?'week-today':'')+'"><button class="week-date" data-day="'+date+'" aria-label="'+esc(fullDate(date)+' im Tageskalender öffnen')+'"><span>'+esc(new Intl.DateTimeFormat('de-DE',{weekday:'short',timeZone:'UTC'}).format(new Date(date+'T00:00:00Z')))+'</span><strong>'+Number(date.slice(-2))+'</strong>'+(date===today()?'<small>Heute</small>':'')+'</button><div class="week-count">'+count+' '+(count===1?'Termin':'Termine')+' · '+working.length+' im Dienst</div><div class="week-entries">'+(parts||'<p class="week-empty">'+(working.length?'Keine Einträge':'Geschlossen / frei')+'</p>')+'</div><button class="week-open" data-day="'+date+'">'+(next?'Frei ab '+time(next.start)+' · ':'')+'Tag öffnen</button></article>';
+ }).join('');
+ return '<div class="week-summary"><div><small>Termine in dieser Woche</small><strong>'+all.length+'</strong></div><div><small>Gebuchte Zeit</small><strong>'+Math.floor(duration/60)+' h '+(duration%60)+' min</strong></div><div><small>Zeitsperren</small><strong>'+blocked.length+'</strong></div></div><div class="week-grid">'+cards+'</div>';
 }
+function personalCalendar(){
+ const members=activeStaff(state),person=members.find(s=>s.id===mobileStaff)||members[0];if(!person){mobileStaff='';return heading('AVANTI / KALENDER','Noch kein aktives Team.','Lege ein Mitarbeiterprofil an, um Termine zu verwalten.','<a href="#team">Team verwalten</a>');}if(mobileStaff!==person.id){mobileStaff=person.id;staffFilter=person.id;}
+ const now=new Date(),current=today(now),first=weekStart(day),dates=Array.from({length:7},(_,i)=>addDays(first,i));
+ const shortDate=d=>new Intl.DateTimeFormat('de-DE',{day:'2-digit',month:'2-digit',timeZone:'UTC'}).format(new Date(d+'T00:00:00Z'));
+ const weekday=d=>new Intl.DateTimeFormat('de-DE',{weekday:'long',timeZone:'UTC'}).format(new Date(d+'T00:00:00Z'));
+ const people=members.map(s=>'<button class="personal-person" data-person="'+esc(s.id)+'" aria-pressed="'+(s.id===person.id)+'">'+avatar(s)+'<span><strong>'+esc(s.name)+'</strong><small>'+esc(s.specialty)+'</small></span><i aria-hidden="true"></i></button>').join('');
+ const days=dates.map(d=>{
+  const shift=dayShift(person,d),work=Boolean(shift),count=quickDay(state,{day:d,staffId:person.id},now).filter(x=>x.status==='free').length;
+  return '<button class="personal-day" data-person-date="'+d+'" aria-pressed="'+(day===d)+'"><span>'+esc(weekday(d))+'</span><strong>'+shortDate(d)+'</strong><small>'+(d===current?'Heute · ':'')+(work?time(shift.start)+'–'+time(shift.end):'Frei')+'</small><span class="personal-availability">'+(salonClosure(state,d)?esc(salonClosure(state,d).name):state.absences.some(a=>a.day===d&&a.staffId===person.id&&a.vacationId)?'Urlaub':state.absences.some(a=>a.day===d&&a.staffId===person.id&&a.wholeDay===true)?'Tag gesperrt':work?count+' Slots frei':'Kein Dienst')+'</span></button>';
+ }).join('');
+ const items=quickDay(state,{day,staffId:person.id},now),counts={free:0,quick:0,booked:0,absence:0};for(const x of items)if(x.status in counts)counts[x.status]++;
+ const work=Boolean(dayShift(person,day));
+ const whole=state.absences.some(a=>a.day===day&&a.staffId===person.id&&a.wholeDay===true);
+ const vacation=state.absences.some(a=>a.day===day&&a.staffId===person.id&&a.vacationId),canWhole=day>=current&&day<=addDays(current,365);
+ const labels={free:'Frei',quick:'Gesperrt',booked:'Gebucht',absence:'Abwesend',wholeDay:'Tag gesperrt',vacation:'Urlaub',closed:'Salon geschlossen',off:'Außer Dienst',pause:'Pause',past:'Vergangen',unavailable:'Nicht verfügbar'};
+ const hours=[];for(const entry of items){const h=Math.floor(entry.start/60);if(!hours.length||hours.at(-1).h!==h)hours.push({h,entries:[]});hours.at(-1).entries.push(entry);}
+ const grid=hours.map(({h,entries})=>'<div class="personal-hour"><div class="personal-hour-label">'+time(h*60)+'<small>UHR</small></div><div class="personal-slot-group">'+entries.map(x=>{
+  const active=x.status==='free'||x.status==='quick',attrs=phoneMode&&x.status==='free'?' data-phone-slot="'+x.start+'"':phoneMode&&x.status==='quick'?' disabled':active?' data-toggle-slot="'+x.start+'" aria-pressed="'+(x.status==='quick')+'"':x.status==='booked'?' draggable="true" data-edit="'+esc(x.appointmentId)+'"':['absence','wholeDay','vacation','closed'].includes(x.status)?' data-block-edit="'+esc(x.blockId)+'"':' disabled';
+  return '<button class="personal-slot slot-'+x.status+(x.source==='manual'?' slot-phone':'')+'"'+attrs+' aria-label="'+esc(time(x.start)+' bis '+time(x.end)+' · '+labels[x.status]+(x.label?' · '+x.label:'')+(active?' · '+(phoneMode?(x.status==='free'?'Telefontermin anlegen':'Bereits gesperrt'):(x.status==='quick'?'freigeben':'Aktion wählen')):''))+'" title="'+esc(x.label||labels[x.status])+'"><strong>'+time(x.start)+'</strong><small><i aria-hidden="true">'+(x.status==='free'?'+':x.status==='quick'?'✓':x.status==='booked'?'●':'–')+'</i>'+esc(x.status==='booked'?(x.label||(x.source==='manual'?'Telefontermin':'Gebucht')):labels[x.status])+'</small></button>';
+ }).join('')+'</div></div>').join('');
+ return '<section class="personal-workspace"><aside class="personal-sidebar"><span class="personal-caption">TEAM</span><button class="team-overview-link" data-team-view="all">▦ Gesamtkalender</button><div class="personal-team">'+people+'</div><div class="personal-side-note"><strong>Dein Wochenplan</strong><p>Wähle dein Profil und arbeite direkt in deinem Kalender.</p></div></aside><div class="personal-main"><div class="personal-top"><div><span class="personal-caption">TERMINPLANUNG</span><h1>'+esc(person.name)+'s Kalender</h1><p>'+esc(person.specialty)+'</p></div><div class="personal-weeknav"><button data-week-step="-1" aria-label="Vorherige Woche">‹</button><button data-person-today>Heute</button><button data-week-step="1" aria-label="Nächste Woche">›</button></div></div><section class="personal-week"><div class="personal-section-title"><h2>Deine Woche</h2><span>'+shortDate(first)+' – '+shortDate(addDays(first,6))+' · '+first.slice(0,4)+'</span></div><div class="personal-days">'+days+'</div></section><section class="personal-daily"><div class="personal-section-title personal-daily-title"><div><span class="personal-caption">TAGESPLAN</span><h2>'+esc(fullDate(day))+'</h2></div><div class="personal-day-actions"><div class="day-action-buttons"><button type="button" class="vacation-button" data-vacation="'+esc(person.id)+'">Urlaub / mehrere Tage</button><button class="personal-day-toggle" data-toggle-day aria-pressed="'+whole+'" '+(canWhole?'':'disabled')+'>'+(vacation?'Urlaub gesperrt':whole?'Tag freigeben':'Ganzen Tag sperren')+'</button></div><div class="personal-counters"><span><b>'+counts.free+'</b> frei</span><span><b>'+counts.quick+'</b> gesperrt</span><span><b>'+counts.booked+'</b> gebuchte Slots</span></div></div></div><div class="personal-instruction personal-phone-toolbar"><div class="personal-mode" role="group" aria-label="Kalendermodus"><button type="button" data-phone-mode="phone" aria-pressed="'+phoneMode+'">+ Telefontermin</button><button type="button" data-phone-mode="block" aria-pressed="'+(!phoneMode)+'">Zeit sperren</button></div><span>'+(phoneMode?'Freie Startzeit anklicken, Dauer und optional Kontaktdaten eintragen.':'Freien Slot antippen: Termin oder 15-Minuten-Sperre wählen. Gesperrte Slots erneut antippen zum Freigeben.')+'</span></div><div class="personal-legend"><span><i class="p-free"></i>Frei</span><span><i class="p-phone"></i>Telefontermin</span><span><i class="p-quick"></i>Zeitsperre</span><span><i class="p-booked"></i>Kundentermin</span><span><i class="p-vacation"></i>Urlaub</span><span><i class="p-closed"></i>Salon geschlossen</span><span><i class="p-off"></i>Pause / nicht verfügbar</span></div>'+(work||items.some(x=>['booked','quick','absence','wholeDay','vacation','closed'].includes(x.status))?'<div class="personal-slots">'+grid+'</div>':'<div class="personal-no-work"><strong>An diesem Tag ist '+esc(person.name)+' nicht im Dienst.</strong><p>Wähle einen anderen Wochentag.</p></div>')+'<p class="personal-demo">Live-Salonkalender · Änderungen werden zentral gespeichert.</p></section></div></section>';
+}
+function teamCalendar(){
+ const members=activeStaff(state);if(!members.length)return personalCalendar();
+ const now=new Date(),current=today(now),first=weekStart(day);
+ const by=members.map(s=>({s,shift:dayShift(s,day),items:new Map(quickDay(state,{day,staffId:s.id},now).map(x=>[x.start,x]))}));
+ const ranges=by.flatMap(x=>[...(x.shift?[x.shift.start,x.shift.end]:[]),...Array.from(x.items.values()).filter(v=>v.status==='booked'||v.status==='quick').flatMap(v=>[v.start,v.end])]);
+ const min=ranges.length?Math.min(...ranges):540,max=ranges.length?Math.max(...ranges):1080;
+ const labels={free:'Frei',quick:'Gesperrt',booked:'Gebucht',absence:'Abwesend',wholeDay:'Tag gesperrt',vacation:'Urlaub',closed:'Salon geschlossen',off:'Außer Dienst',pause:'Pause',past:'Vergangen',unavailable:'Nicht verfügbar'};
+ const cols='grid-template-columns:64px repeat('+members.length+',minmax(116px,1fr))';
+ const header='<div class="team-grid-time">Uhrzeit</div>'+by.map(({s,shift,items})=>'<button class="team-grid-person" data-person="'+esc(s.id)+'">'+avatar(s)+'<strong>'+esc(s.name)+'</strong><small>'+(salonClosure(state,day)?esc(salonClosure(state,day).name):state.absences.some(a=>a.day===day&&a.staffId===s.id&&a.vacationId)?'Urlaub':shift?time(shift.start)+'–'+time(shift.end):'Frei')+' · '+Array.from(items.values()).filter(v=>v.status==='free').length+' frei</small></button>').join('');
+ const rows=Array.from({length:Math.max(0,Math.ceil((max-min)/15))},(_,i)=>min+i*15).map(t=>'<div class="team-grid-time">'+time(t)+'</div>'+by.map(({s,items})=>{const x=items.get(t)||{status:salonClosure(state,day)?'closed':state.absences.some(a=>a.day===day&&a.staffId===s.id&&a.vacationId)?'vacation':'off'},st=x.status,available=st==='free'||st==='quick'&&!phoneMode,attr=available?' data-overview-slot="'+t+'" data-overview-staff="'+esc(s.id)+'"':st==='booked'?' draggable="true" data-edit="'+esc(x.appointmentId)+'"':['absence','wholeDay','vacation','closed'].includes(st)?' data-block-edit="'+esc(x.blockId)+'"':' disabled';
+ return '<button class="personal-slot team-grid-slot slot-'+st+(x.source==='manual'?' slot-phone':'')+'"'+attr+' aria-label="'+esc(s.name+' · '+time(t)+' · '+(x.label||labels[st]))+'" title="'+esc(x.label||labels[st])+'"><small>'+esc(st==='booked'?x.label||labels[st]:labels[st])+'</small></button>';}).join('')).join('');
+ const days=Array.from({length:7},(_,i)=>addDays(first,i)).map(d=>'<button class="personal-day" data-person-date="'+d+'" aria-pressed="'+(d===day)+'"><span>'+esc(new Intl.DateTimeFormat('de-DE',{weekday:'short',timeZone:'UTC'}).format(new Date(d+'T00:00:00Z')))+'</span><strong>'+d.slice(8)+'.'+d.slice(5,7)+'.</strong><small>'+(d===current?'Heute':'')+'</small></button>').join('');
+ return '<section class="team-calendar"><div class="personal-top"><div><span class="personal-caption">TERMINPLANUNG · TEAM</span><h1>Gesamtkalender</h1><p>Alle Mitarbeiter auf einen Blick. Ein Name öffnet den persönlichen Kalender.</p></div><div class="day-action-buttons"><button class="vacation-button" data-vacation="all">Urlaub / mehrere Tage</button><button class="team-overview-link" data-team-view="person">Einzelkalender</button></div></div><section class="personal-week"><div class="personal-section-title"><h2>'+esc(fullDate(day))+'</h2><div class="personal-weeknav"><button data-person-date="'+addDays(day,-1)+'" aria-label="Vorheriger Tag">‹</button><button data-person-today>Heute</button><button data-person-date="'+addDays(day,1)+'" aria-label="Nächster Tag">›</button></div></div><div class="personal-days team-week-days">'+days+'</div></section><section class="personal-daily"><div class="personal-instruction personal-phone-toolbar"><div class="personal-mode" role="group" aria-label="Kalendermodus"><button data-phone-mode="phone" aria-pressed="'+phoneMode+'">+ Telefontermin</button><button data-phone-mode="block" aria-pressed="'+(!phoneMode)+'">Zeit sperren</button></div><span>'+(phoneMode?'Freies Feld wählen und Telefontermin eintragen.':'Freien Slot antippen und Telefontermin oder 15-Minuten-Sperre auswählen.')+'</span></div><div class="personal-legend"><span><i class="p-free"></i>Frei</span><span><i class="p-phone"></i>Telefontermin</span><span><i class="p-quick"></i>Zeitsperre</span><span><i class="p-booked"></i>Online</span><span><i class="p-vacation"></i>Urlaub</span><span><i class="p-closed"></i>Salon geschlossen</span><span><i class="p-off"></i>Außer Dienst / Pause</span></div><div class="team-grid-scroll"><div class="team-grid" style="'+cols+'">'+header+rows+'</div></div><p class="personal-demo">Live-Salonkalender · Änderungen werden zentral gespeichert.</p></section></section>';
+}
+
+
+function navigate(d){if(busy||!isDate(d)||d<addDay(today(),-365)||d>addDay(today(),359))return;day=d;load();}
+function openFromDate(d,id){if(!id)return;const x=weekData[d];if(!x)return;day=d;snapshot=x;syncModel();render();showEntry(id);}
+function openBlockFromDate(d,id){openFromDate(d,id);}
+function originalTeam(){
+ return heading("AVANTI / TEAM","Team.","Mitarbeiterprofile verwalten · "+state.staff.length+" aktiv.")+'<section class="panel salon-settings"><div><h2>Betriebszeiten &amp; Schließtage</h2><p>Urlaub und Schließtage zentral verwalten.</p></div><button class="primary" data-team-absence>Schließtage verwalten</button></section><div class="grid">'+state.staff.map(s=>'<article class="panel"><div class="controls">'+avatar(s)+'<h2>'+esc(s.name)+'</h2></div><p>'+esc(s.specialty)+'</p><button data-profile="'+esc(s.code)+'">Profil bearbeiten</button><button class="shift-profile-button" data-shifts="'+esc(s.code)+'">Arbeitszeiten bearbeiten</button><button data-vacation="'+esc(s.id)+'">Urlaub eintragen</button></article>').join("")+'</div>';
+}
+function render(silent=false){
+ if(dialog.open||!snapshot)return;
+ if(silent&&["INPUT","SELECT"].includes(document.activeElement?.tagName)&&!loadError)return;
+ const oldScroll=root.querySelector(".team-grid-scroll")?.scrollLeft||0;
+ document.getElementById("legacy-style").media="all";
+ document.body.dataset.screen=teamPage?"team":"studio";
+ document.getElementById("studio-nav").hidden=false;
+ document.getElementById("legacy-brand").hidden=false;
+ document.getElementById("login-brand").hidden=true;
+ document.querySelectorAll("#studio-nav button").forEach(b=>b.setAttribute("aria-pressed",String((b.dataset.screen==="team")===teamPage)));
+ const bar='<div class="workspace-live-tools"><span role="status" class="live-indicator '+(loadError?"live-error":"")+'">'+esc(loadError?"Abgleich fehlgeschlagen – letzter Stand":"Server verbunden")+'</span><div><button id="legacy-refresh">Aktualisieren</button><button id="legacy-quick" class="primary">+ Termin</button><button id="legacy-week" aria-pressed="'+(viewMode==="week")+'">'+(viewMode==="week"?"Tageskalender":"Wochenübersicht")+'</button></div></div>';
+ root.innerHTML=bar+(teamPage?originalTeam():viewMode==="week"?'<section class="team-calendar"><div class="personal-top"><div><span class="personal-caption">TERMINPLANUNG</span><h1>Wochenübersicht</h1><p>'+esc(fullDate(weekStart(day)))+' – '+esc(fullDate(addDay(weekStart(day),6)))+'</p></div><div class="personal-weeknav"><button data-week-step="-1">‹</button><button data-person-today>Heute</button><button data-week-step="1">›</button></div></div>'+weekOverview(teamView?state.staff:state.staff.filter(s=>s.id===mobileStaff))+'</section>':teamView?teamCalendar():personalCalendar());
+ if(!["owner","manager"].includes(snapshot.user.role)){document.querySelector('[data-screen="team"]').hidden=true;}
+ else document.querySelector('[data-screen="team"]').hidden=false;
+ document.querySelectorAll("#studio-nav button").forEach(b=>b.onclick=()=>{teamPage=b.dataset.screen==="team";render();});
+ root.querySelector("#legacy-refresh").onclick=()=>load();
+ root.querySelector("#legacy-quick").onclick=()=>{if(!busy)quickBook();};
+ root.querySelector("#legacy-week").onclick=()=>{teamPage=false;viewMode=viewMode==="week"?"day":"week";render();};
+ root.querySelectorAll("[data-team-view]").forEach(b=>b.onclick=()=>{teamView=b.dataset.teamView==="all";viewMode="day";syncModel();render();});
+ root.querySelectorAll("[data-person]").forEach(b=>b.onclick=()=>{mobileStaff=b.dataset.person;teamView=false;viewMode="day";syncModel();render();});
+ root.querySelectorAll("[data-person-date],[data-day]").forEach(b=>b.onclick=()=>{viewMode="day";navigate(b.dataset.personDate||b.dataset.day);});
+ root.querySelectorAll("[data-week-step]").forEach(b=>b.onclick=()=>navigate(addDay(day,7*Number(b.dataset.weekStep))));
+ root.querySelectorAll("[data-person-today]").forEach(b=>b.onclick=()=>navigate(today()));
+ root.querySelectorAll("[data-phone-mode]").forEach(b=>b.onclick=()=>{phoneMode=b.dataset.phoneMode==="phone";render();});
+ root.querySelectorAll("[data-phone-slot],[data-toggle-slot],[data-overview-slot]").forEach(b=>b.onclick=()=>{if(busy)return;const p=staff(b.dataset.overviewStaff||mobileStaff);const t=Number(b.dataset.phoneSlot??b.dataset.toggleSlot??b.dataset.overviewSlot);if(!p)return;if(phoneMode)bookDialog(p,t);else choice(p.code,t);});
+ root.querySelectorAll("[data-edit],[data-block-edit]").forEach(b=>b.onclick=()=>{if(busy)return;const id=b.dataset.edit||b.dataset.blockEdit;const d=b.closest(".week-card")?.querySelector("[data-day]")?.dataset.day||day;openFromDate(d,id);});
+ root.querySelectorAll("[data-vacation]").forEach(b=>b.onclick=()=>{if(busy)return;const p=staff(b.dataset.vacation);staffFilter=p?.code||"all";absenceDialog();});
+ root.querySelector("[data-team-absence]")?.addEventListener("click",()=>{staffFilter="all";absenceDialog();});
+ root.querySelector("[data-toggle-day]")?.addEventListener("click",()=>{const p=staff(mobileStaff),block=snapshot.entries.find(e=>e.staff_id===p?.id&&e.kind==="absence"&&e.local.start===0&&e.local.end===1440);if(block)showEntry(block.id);else {staffFilter=p?.code||"all";absenceDialog();}});
+ root.querySelectorAll("[data-profile]").forEach(b=>b.onclick=()=>profileDialog(snapshot.staff.find(p=>p.code===b.dataset.profile)));
+ root.querySelectorAll("[data-shifts]").forEach(b=>b.onclick=()=>shiftsDialog(snapshot.staff.find(p=>p.code===b.dataset.shifts)));
+ root.querySelectorAll('[draggable="true"][data-edit]').forEach(b=>{b.ondragstart=e=>{dragged=b.dataset.edit;e.dataTransfer.setData("text/plain",dragged);e.dataTransfer.effectAllowed="move";};b.ondragend=()=>dragged=null;});
+ root.querySelectorAll("[data-overview-slot],[data-phone-slot],[data-toggle-slot]").forEach(b=>{b.ondragover=e=>{if(dragged){e.preventDefault();e.dataTransfer.dropEffect="move";}};b.ondrop=async e=>{e.preventDefault();if(!dragged||busy)return;const x=snapshot.entries.find(a=>a.id===dragged&&a.kind==="appointment");const p=staff(b.dataset.overviewStaff||mobileStaff),t=Number(b.dataset.overviewSlot??b.dataset.phoneSlot??b.dataset.toggleSlot);dragged=null;if(!x||!p||!Number.isFinite(t)||!confirm("Termin auf "+p.name+" · "+clock(t)+" verschieben?"))return;try{await refreshAuth();await request("edit-entry",{method:"POST",body:{id:x.id,name:x.customer_name,phone:x.customer_phone||"",staffCode:p.code,day,start:t,duration:x.local.end-x.local.start}});toast("Termin verschoben.");await load();}catch(err){toast(errorLabel(err));}};});
+ const scroll=root.querySelector(".team-grid-scroll");if(scroll&&silent)scroll.scrollLeft=oldScroll;
+}
+
 function header(title,caption){return '<div class="dialog-top"><div><span class="eyebrow">AVANTI / TERMINPLANUNG</span><h2>'+esc(title)+'</h2></div><button class="icon-close" type="button" data-close aria-label="Schließen">×</button></div><div class="dialog-context">'+esc(caption)+'</div>'}
 function openDialog(html){dialog.innerHTML='<div class="dialog-body">'+html+'</div>';dialog.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>dialog.close());dialog.showModal();}
 function choice(code,start){const person=snapshot.staff.find(s=>s.code===code);if(!person)return;openDialog(header("Freie Zeit auswählen",person.name+" · "+label(day)+" · "+clock(start)+" Uhr")+'<p class="subtle">Wähle, was du mit diesem freien Zeitraum machen möchtest.</p><div class="dialog-choices"><button class="primary" id="book-choice">＋ Telefontermin eintragen</button><button id="block-choice">Zeit sperren</button></div>');
@@ -97,14 +189,14 @@ function choice(code,start){const person=snapshot.staff.find(s=>s.code===code);i
 }
 function bookDialog(person,start){
  const services=snapshot.services.filter(s=>snapshot.assignments?.some(a=>a.staff_id===person.id&&a.service_id===s.id)&&freeFor(person,start,s.duration));const lengths=Array.from({length:32},(_,i)=>(i+1)*15).filter(n=>freeFor(person,start,n));if(!lengths.length)return toast("Zeitfenster nicht mehr frei.");
- dialog.close();
+ if(dialog.open)dialog.close();
  openDialog(header("Telefontermin",person.name+" · "+label(day)+" · "+clock(start)+" Uhr")+'<form class="entry-form" id="entry-form"><label>Behandlung<select name="serviceCode"><option value="">Andere Dauer / ohne Behandlung</option>'+services.map(s=>'<option value="'+esc(s.code)+'">'+esc(s.name)+' · '+s.duration+' Min.</option>').join("")+'</select></label><div class="form-row"><label>Kundenname<input name="name" maxlength="100" placeholder="Telefontermin" autocomplete="off"></label><label>Telefon (optional)<input name="phone" type="tel" maxlength="40" autocomplete="off"></label></div><label>Dauer<select name="duration">'+lengths.map(n=>'<option value="'+n+'" '+(n===30?"selected":"")+'>'+n+' Minuten</option>').join("")+'</select></label><div id="booking-span" class="dialog-context"></div><div class="subtle">Die gewählte Behandlungsdauer wird vollständig reserviert. Speichern erfolgt im gemeinsamen Salonkalender.</div><p class="dialog-error" role="alert"></p><button class="primary" type="submit">Termin verbindlich speichern</button></form>');
  const form=dialog.querySelector("form"),f=form.elements;function sync(){const s=snapshot.services.find(s=>s.code===f.serviceCode.value);if(s)f.duration.value=String(s.duration);f.duration.disabled=!!s;dialog.querySelector("#booking-span").textContent=clock(start)+" bis "+clock(start+Number(f.duration.value))+" Uhr";}f.serviceCode.onchange=sync;f.duration.onchange=sync;sync();
  form.onsubmit=async e=>{e.preventDefault();const button=form.querySelector('button[type="submit"]');button.disabled=true;try{await refreshAuth();await request("staff-book",{method:"POST",body:{staffCode:person.code,serviceCode:f.serviceCode.value||null,day,start,name:f.name.value.trim()||"Telefontermin",phone:f.phone.value,duration:Number(f.duration.value)}});dialog.close();toast("Termin zentral gespeichert.");await load()}catch(err){form.querySelector(".dialog-error").textContent=errorLabel(err)}finally{button.disabled=false}};
 }
 function blockDialog(person,start){
  const lengths=Array.from({length:96},(_,i)=>(i+1)*15).filter(n=>freeFor(person,start,n));if(!lengths.length)return toast("Zeitfenster nicht mehr frei.");
- dialog.close();openDialog(header("Zeit sperren",person.name+" · "+label(day)+" · "+clock(start))+'<form id="block-form" class="entry-form"><label>Dauer<select name="duration">'+lengths.map(n=>'<option value="'+n+'">'+n+' Minuten · bis '+clock(start+n)+'</option>').join("")+'</select></label><label>Grund (optional)<input name="note" maxlength="100" placeholder="Nicht verfügbar"></label><p class="dialog-error" role="alert"></p><button class="primary">Zeit im Salonkalender sperren</button></form>');
+ if(dialog.open)dialog.close();openDialog(header("Zeit sperren",person.name+" · "+label(day)+" · "+clock(start))+'<form id="block-form" class="entry-form"><label>Dauer<select name="duration">'+lengths.map(n=>'<option value="'+n+'">'+n+' Minuten · bis '+clock(start+n)+'</option>').join("")+'</select></label><label>Grund (optional)<input name="note" maxlength="100" placeholder="Nicht verfügbar"></label><p class="dialog-error" role="alert"></p><button class="primary">Zeit im Salonkalender sperren</button></form>');
  const form=dialog.querySelector("form");form.onsubmit=async e=>{e.preventDefault();const b=form.querySelector("button");b.disabled=true;try{await refreshAuth();await request("block",{method:"POST",body:{staffCode:person.code,day,start,end:start+Number(form.elements.duration.value),note:form.elements.note.value}});dialog.close();toast("Zeitraum zentral gesperrt.");await load()}catch(err){form.querySelector(".dialog-error").textContent=errorLabel(err)}finally{b.disabled=false}};
 }
 function showEntry(id){const x=snapshot.entries.find(e=>e.id===id);if(!x)return;const person=snapshot.staff.find(s=>s.id===x.staff_id);const isBlock=x.kind==="absence";
