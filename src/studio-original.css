@@ -314,3 +314,180 @@ body:not([data-screen]) .loader{background:#fff;border:1px solid var(--av-edge);
 @media(max-width:700px){body[data-screen] .site-header,body[data-screen=studio] header,body[data-screen=team] header{padding:11px 14px;gap:10px;min-height:0;flex-wrap:wrap}body[data-screen] #legacy-brand{font-size:30px;min-width:unset}body[data-screen] #legacy-brand small{font-size:8px;letter-spacing:1.6px;margin-top:5px}body[data-screen] #studio-nav{order:3;width:100%}body[data-screen] #studio-nav button{flex:1;min-height:37px}body[data-screen=studio] #root,body[data-screen=team] #root{padding:14px 13px 26px}body[data-screen] .workspace-live-tools{margin-bottom:18px;gap:11px}body[data-screen] .workspace-live-tools>div{display:grid;grid-template-columns:1fr 1fr;width:100%;gap:6px}body[data-screen] .workspace-live-tools button{padding:9px 7px;min-height:44px;font-size:12px;white-space:normal}body[data-screen] .workspace-live-tools #legacy-closures::before,body[data-screen] .workspace-live-tools #legacy-refresh::before{display:none}body[data-screen] .personal-main,body[data-screen] .team-calendar{gap:14px}body[data-screen] .personal-top h1,body[data-screen=team] main .heading h1{font-size:28px}body[data-screen] .personal-top{flex-wrap:wrap;gap:12px}body[data-screen] .personal-top p{display:block}body[data-screen] .personal-week,body[data-screen] .personal-daily{padding:15px;border-radius:15px}body[data-screen] .personal-days{grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}body[data-screen] .personal-day{min-height:94px;padding:9px 6px}body[data-screen] .personal-day strong{font-size:19px}body[data-screen] .personal-day small,body[data-screen] .personal-availability{font-size:10px}body[data-screen] .personal-slots{grid-template-columns:1fr}body[data-screen] .personal-slot{min-height:60px}body[data-screen] .personal-slot strong{font-size:14px}body[data-screen] .personal-slot small{font-size:10px}body[data-screen] .personal-phone-toolbar{flex-wrap:wrap}body[data-screen] .personal-mode{width:100%}body[data-screen] .personal-mode button{min-height:39px;flex:1}body[data-screen] .personal-legend{gap:9px 12px;font-size:10px}body[data-screen] .week-summary{gap:6px}body[data-screen] .week-summary>div{padding:12px 8px;border-radius:10px}body[data-screen] .week-summary small{font-size:10px}body[data-screen] .week-summary strong{font-size:19px}body[data-screen=team] .staff-heading{flex-direction:column;align-items:stretch;gap:13px;margin-bottom:17px}body[data-screen=team] main .salon-settings{padding:17px;align-items:stretch;flex-direction:column}body[data-screen=team] main .staff-card{padding:17px}body[data-screen] #action-dialog .dialog-body{padding:20px}body[data-screen] #action-dialog .dialog-top h2{font-size:22px}body[data-screen] #action-dialog .staff-photo-editor{grid-template-columns:66px minmax(0,1fr);padding:10px}body[data-screen] #action-dialog .staff-photo-editor .avatar{width:66px;height:66px}}
 @media(max-width:480px){body[data-screen] .personal-days{grid-template-columns:repeat(3,minmax(0,1fr))}body[data-screen] .personal-day{min-height:85px}body[data-screen] .personal-slot-group{gap:4px}body[data-screen] .personal-slot{padding:8px 5px}body[data-screen] .personal-slot small{font-size:10px}body[data-screen] .header-right button{padding:7px 9px;font-size:11px}body[data-screen] #action-dialog .dialog-body{padding:16px}body[data-screen] .personal-daily-title{align-items:flex-start;flex-direction:column}body[data-screen] .day-action-buttons{justify-content:flex-start}body[data-screen] .personal-day-toggle{width:auto}body:not([data-screen]) #root{padding:15px 13px}body:not([data-screen]) .login-shell{grid-template-columns:1fr;margin:0 auto;border-radius:19px;min-height:0}body:not([data-screen]) .login-intro{padding:28px 24px;min-height:190px}body:not([data-screen]) .login-intro h1{font-size:38px}body:not([data-screen]) .login-panel{padding:27px 24px}body:not([data-screen]) .login-panel h2{font-size:27px}}
 @media(prefers-reduced-motion:reduce){body button{transition:none}}
+
+
+/* AVANTI — high-contrast Apple-inspired finish, approved visual direction.
+   No changes to application logic, data, DOM hooks or authentication. */
+:root{
+ --av-bg:#eff0f2;--av-surface:#fff;--av-inset:#f4f5f6;--av-text:#111418;--av-muted:#414952;
+ --av-edge:#d6d9de;--av-strong-edge:#aeb7b8;--av-accent:#075a36;--av-accent-dark:#064226;
+ --av-tint:#dcefe1;--av-shadow:0 1px 2px #1823320a,0 8px 24px #17233312;
+ --av-forest:linear-gradient(155deg,#087849 0%,#075a36 52%,#063b25 100%);
+}
+body[data-screen=studio],body[data-screen=team]{background:#eff0f2;color:#111418}
+body .site-header,body[data-screen] .site-header,body[data-screen=studio] header,body[data-screen=team] header{
+ background:#ffffffee;color:#101417;border-bottom:1px solid #d5d8dc;box-shadow:0 3px 14px #1d29340b;min-height:78px
+}
+body[data-screen] #legacy-brand{font-size:39px;color:#111418}
+body[data-screen] #legacy-brand small{color:#303841}
+body[data-screen] #studio-nav{background:#e9ebee;padding:4px;gap:4px}
+body[data-screen] #studio-nav button{font-size:14px;font-weight:700;color:#252d34;min-height:42px;padding:9px 18px}
+body[data-screen] #studio-nav button[aria-pressed=true]{background:var(--av-forest);color:white;box-shadow:0 2px 5px #06422635}
+body[data-screen] #studio-nav button[aria-pressed=true]:hover{background:#064226;color:#fff}
+body[data-screen] .header-right #account{font-size:13px;font-weight:600;color:#343c43}
+body[data-screen] .header-right button{background:#fff;color:#232930;border-color:#cbd0d5;min-height:40px;font-size:13px;box-shadow:0 1px 2px #111b2909}
+body[data-screen] .header-right button:hover{background:#e7eee9;color:#064226;border-color:#8eae9c}
+body[data-screen=studio] #root,body[data-screen=team] #root{max-width:1840px;padding:24px clamp(22px,2.5vw,42px) 42px}
+body[data-screen] .workspace-live-tools{margin-bottom:22px;gap:12px}
+body[data-screen] .workspace-live-tools button{font-size:14px;font-weight:700;min-height:44px;color:#151b20;border:1px solid #cbd0d5;background:#fff;box-shadow:0 2px 6px #1723330e;padding:10px 15px}
+body[data-screen] .workspace-live-tools button:hover{background:#f2f5f3;border-color:#a8bbb0}
+body[data-screen] .workspace-live-tools button.primary,body .primary,body[data-screen=team] main button.primary,body[data-screen=team] dialog button.primary{background:var(--av-forest);color:#fff;border-color:#075a36;box-shadow:0 2px 5px #06422630;font-weight:700}
+body[data-screen] .workspace-live-tools button.primary:hover,body .primary:hover:not(:disabled),body[data-screen=team] main button.primary:hover:not(:disabled){background:#064226;color:#fff;border-color:#064226}
+body[data-screen] .workspace-live-tools .closure-shortcut{background:#dff2df;color:#174b28;border-color:#9dc6a0}
+body[data-screen] .workspace-live-tools .closure-shortcut:hover{background:#cce9cd;border-color:#70a875}
+body[data-screen] .workspace-live-tools #legacy-week[aria-pressed=true]{background:#dcece0;border-color:#91b79a;color:#174b28}
+body[data-screen] .live-indicator{color:#184c2c;font-size:13px;font-weight:700}
+body[data-screen] .live-indicator:before{background:#078235;box-shadow:0 0 0 5px #d5eadd}
+body[data-screen] .live-indicator.live-error{color:#9d2825}
+body[data-screen] .live-indicator.live-error:before{background:#b92c2c;box-shadow:0 0 0 5px #f5dcd9}
+body[data-screen] .personal-workspace{grid-template-columns:clamp(220px,18vw,275px) minmax(0,1fr);gap:clamp(24px,2.5vw,39px)}
+body[data-screen] .personal-sidebar{background:#e6e8eb;border:1px solid #d1d5da;border-radius:17px;padding:18px 13px;min-height:490px;box-shadow:0 2px 9px #18233208}
+body[data-screen] .personal-sidebar>.personal-caption{color:#343d46;font-size:12px;font-weight:750}
+body[data-screen] .personal-team{gap:5px}
+body[data-screen] .personal-person{min-height:67px;color:#171b1f;gap:12px;padding:10px 9px}
+body[data-screen] .personal-person:hover{background:#f4f5f6}
+body[data-screen] .personal-person[aria-pressed=true]{background:#d7efd8;border-color:#9fcba3;color:#124622}
+body[data-screen] .personal-person[aria-pressed=true] strong{color:#124622}
+body[data-screen] .personal-person strong{font-size:15px;font-weight:700}
+body[data-screen] .personal-person small{font-size:12px;color:#424b52;font-weight:500}
+body[data-screen] .personal-person[aria-pressed=true] small{color:#245a33}
+body[data-screen] .avatar{background:#d3d7db;color:#20272c;border:0;font-size:17px;font-weight:700}
+body[data-screen] .personal-person[aria-pressed=true] .avatar:not(.staff-photo){background:#aedcad;color:#134a25}
+body[data-screen] .personal-person[aria-pressed=true] i{background:#008135;width:8px;height:8px}
+body[data-screen] .team-overview-link{background:#fff;color:#1e262d;border-color:#cbd0d5;min-height:47px;font-size:14px;font-weight:700;box-shadow:0 2px 6px #1723330b}
+body[data-screen] .personal-side-note{border-top:1px solid #cdd2d7;margin-top:17px;padding:17px 9px 3px}
+body[data-screen] .personal-side-note strong{font-size:13px;color:#17201b;font-weight:700}
+body[data-screen] .personal-side-note p{font-size:13px;color:#424a51}
+body[data-screen] .personal-top h1,body[data-screen=team] main .heading h1{font:750 clamp(32px,3.3vw,46px)/1.1 var(--av-font);color:#101215;letter-spacing:-.048em}
+body[data-screen] .personal-top p,body[data-screen=team] main .heading p{font-size:15px;color:#414950;font-weight:500}
+body[data-screen] .personal-caption,body[data-screen] .eyebrow{font-size:11px;font-weight:750;letter-spacing:.1em;color:#3b444d}
+body[data-screen] .personal-weeknav{border:1px solid #cbd0d5;box-shadow:0 2px 6px #1723330b;padding:3px;background:#fff}
+body[data-screen] .personal-weeknav button{color:#141b20;font-size:14px;font-weight:700;min-height:38px}
+body[data-screen] .personal-weeknav button:first-child,body[data-screen] .personal-weeknav button:last-child{font-size:24px;font-weight:600}
+body[data-screen] .personal-week,body[data-screen] .personal-daily{border:1px solid #d5d9de;background:#fff;box-shadow:var(--av-shadow);border-radius:17px;padding:clamp(17px,2vw,24px)}
+body[data-screen] .personal-section-title h2{font:750 24px/1.25 var(--av-font);color:#111418;letter-spacing:-.035em}
+body[data-screen] .personal-section-title>span{font-size:14px;color:#3e4650;font-weight:550}
+body[data-screen] .personal-day{background:#f1f2f4;border:1px solid #cfd4d9;color:#14191f;min-height:125px;padding:13px 11px;gap:6px}
+body[data-screen] .personal-day:hover{background:#e4e9e6;border-color:#9fb7a7}
+body[data-screen] .personal-day[aria-pressed=true]{background:var(--av-forest);border-color:#075a36;color:#fff;box-shadow:0 3px 10px #075a3633}
+body[data-screen] .personal-day>span:first-child{font-size:13px;font-weight:700}
+body[data-screen] .personal-day strong{font:750 clamp(22px,2vw,28px)/1.12 var(--av-font);letter-spacing:-.045em}
+body[data-screen] .personal-day small{font-size:12px;font-weight:550}
+body[data-screen] .personal-availability{font-size:12px;font-weight:750}
+body[data-screen] .personal-day[aria-pressed=true] small{background:#ffffff1a;padding:3px 5px;border-radius:5px;color:#fff}
+body[data-screen] .personal-day[aria-pressed=true] .personal-availability{color:#fff}
+body[data-screen] .team-week-days .personal-day{min-height:82px}
+body[data-screen] .personal-daily-title h2{font-size:clamp(24px,2.4vw,34px);font-weight:750;letter-spacing:-.045em}
+body[data-screen] .vacation-button,body[data-screen] .personal-day-toggle{background:#fff;border:1px solid #c6cbd0;color:#20272d;font-size:13px;font-weight:700;min-height:43px;box-shadow:0 1px 3px #1723330c}
+body[data-screen] .personal-day-toggle[aria-pressed=true]{background:#813b2f;border-color:#813b2f;color:#fff}
+body[data-screen] .personal-counters{font-size:13px;gap:13px}
+body[data-screen] .personal-counters span{color:#414a51}
+body[data-screen] .personal-counters b{color:#171b1f;font-size:19px;letter-spacing:-.045em}
+body[data-screen] .personal-counters span:first-child b{color:#075a36}
+body[data-screen] .personal-counters span:nth-child(2) b{color:#68458e}
+body[data-screen] .personal-mode{background:#eef0f2;border-color:#d3d7db;gap:4px}
+body[data-screen] .personal-mode button{font-size:13px;color:#17201f;font-weight:700;min-height:37px;padding:8px 12px}
+body[data-screen] .personal-mode button[aria-pressed=true]{background:var(--av-forest);color:#fff;box-shadow:0 2px 5px #075a3633}
+body[data-screen] .personal-phone-toolbar>span{font-size:13px;color:#414952}
+body[data-screen] .personal-legend{font-size:12px;color:#2c343c;font-weight:550;gap:13px 17px;margin:20px 0 15px}
+body[data-screen] .personal-legend i{width:13px;height:13px;border-radius:3px}
+body[data-screen] .p-free{background:#c9efc8;border-color:#6cbb70}
+body[data-screen] .p-phone{background:#f8dbab;border-color:#c19447}
+body[data-screen] .p-quick{background:#dcd0f2;border-color:#9b7bc1}
+body[data-screen] .p-booked{background:#beddfa;border-color:#5a9bd3}
+body[data-screen] .p-vacation{background:#f1d2e5;border-color:#c38cac}
+body[data-screen] .p-closed{background:#d5d8dd;border-color:#9fa5ae}
+body[data-screen] .p-off{background:#e3e7eb;border-color:#b7bfc7}
+body[data-screen] .personal-hour{border-top:1px solid #dce0e4;padding:12px 0 13px}
+body[data-screen] .personal-hour-label{color:#171d24;font-size:13px;font-weight:750}
+body[data-screen] .personal-hour-label small{color:#414a54;font-size:10px}
+body[data-screen] .personal-slot{background:#d9f3d6;color:#153d20;border:1px solid #94cc93;min-height:62px;border-radius:8px;padding:9px 7px;box-shadow:0 1px 2px #18233208}
+body[data-screen] .personal-slot strong{font-size:15px;font-weight:750}
+body[data-screen] .personal-slot small{font-size:12px;font-weight:600;color:inherit}
+body[data-screen] .personal-slot.slot-free:hover{background:#bde9b9;border-color:#56aa5e;color:#103b1c}
+body[data-screen] .personal-slot.slot-booked{background:#cce4fa;color:#143f68;border-color:#83b5e0}
+body[data-screen] .personal-slot.slot-booked:hover{background:#b4d6f4;border-color:#5f9bd0}
+body[data-screen] .personal-slot.slot-phone,body[data-screen] .personal-slot.slot-booked.slot-phone{background:#fae1b6;color:#65400c;border-color:#d5ae69}
+body[data-screen] .personal-slot.slot-phone:hover,body[data-screen] .personal-slot.slot-booked.slot-phone:hover{background:#f5d39c;border-color:#bb9146}
+body[data-screen] .personal-slot.slot-quick,body[data-screen] .personal-slot.slot-absence{background:#e4d9f7;color:#4c2d75;border-color:#b6a0d7}
+body[data-screen] .personal-slot.slot-vacation,body[data-screen] .personal-slot.slot-vacation:disabled{background:#f4d6e8;color:#782c5b;border-color:#d3a0be}
+body[data-screen] .personal-slot:disabled,body[data-screen] .personal-slot.slot-past:disabled,body[data-screen] .personal-slot.slot-off:disabled{background:#e6e8eb;color:#444d56;border-color:#cdd2d8;opacity:1}
+body[data-screen] .personal-slot.slot-pause:disabled{background:#dce7f2;color:#334e6a;border-color:#b7cadb}
+body[data-screen] .personal-slot.slot-closed,body[data-screen] .personal-slot.slot-closed:disabled,body[data-screen] .personal-slot.slot-closed:not(:disabled),body[data-screen] .personal-slot.slot-wholeDay,body[data-screen] .personal-slot.slot-wholeDay:disabled,body[data-screen] .personal-slot.slot-wholeDay:not(:disabled){background:#d5d8de;color:#343c47;border-color:#aab1bb}
+body[data-screen] .personal-slot.slot-quick:disabled{background:#e4d9f7;color:#4c2d75;border-color:#b6a0d7}
+body[data-screen] .personal-demo{font-size:12px;color:#444d55}
+body[data-screen] .team-grid-scroll{border:1px solid #cbd1d7}
+body[data-screen] .team-grid{background:#d7dce1}
+body[data-screen] .team-grid-time{background:#edf0f3;color:#293440;font-size:13px;font-weight:700}
+body[data-screen] .team-grid-person{background:#fff;color:#111418;font-size:14px;font-weight:700}
+body[data-screen] .team-grid-person small{color:#424b53;font-size:12px}
+body[data-screen] .team-grid-slot.personal-slot{min-height:42px}
+body[data-screen] .team-grid-slot small{font-size:12px;font-weight:650}
+body[data-screen] .team-grid-slot.slot-free{background:#d9f3d6;color:#153d20;border-color:#94cc93}
+body[data-screen] .team-grid-slot.slot-free:hover{background:#bde9b9;border-color:#56aa5e}
+body[data-screen] .team-grid-slot.slot-past:disabled,body[data-screen] .team-grid-slot.slot-off:disabled{background:#e6e8eb;color:#444d56}
+body[data-screen] .team-grid-slot.slot-pause:disabled{background:#dce7f2;color:#334e6a}
+body[data-screen] .week-summary>div{border-color:#d0d5db;box-shadow:var(--av-shadow)}
+body[data-screen] .week-summary strong{font-weight:750;color:#101418}
+body[data-screen] .week-summary small{font-size:13px;color:#414952}
+body[data-screen] .week-card{border-color:#ccd2d8;box-shadow:var(--av-shadow)}
+body[data-screen] .week-card.week-today{border-color:#078145;box-shadow:inset 0 0 0 1px #078145}
+body[data-screen] .week-date strong{color:#111418;font-weight:750}
+body[data-screen] .week-date span,body[data-screen] .week-date small,body[data-screen] .week-count,body[data-screen] .week-empty{color:#424c55;font-size:12px}
+body[data-screen] .week-entry{background:#fae1b6;color:#65400c;border-left-color:#c19447}
+body[data-screen] .week-entry.week-online{background:#cce4fa;color:#143f68;border-left-color:#5a9bd3}
+body[data-screen] .week-entry.week-block{background:#e4d9f7;color:#4c2d75;border-left-color:#9b7bc1}
+body[data-screen] .week-open{background:#d9f3d6;color:#153d20;border-color:#94cc93;font-size:12px}
+body[data-screen=team] main .salon-settings{background:#dcefe1;border-color:#a4cbb0;color:#134a25}
+body[data-screen=team] main .salon-settings h2{font-weight:750;color:#134a25;font-size:20px}
+body[data-screen=team] main .salon-settings p{color:#285337;font-size:14px}
+body[data-screen=team] main .salon-settings button{background:#fff;color:#174b28;border-color:#9dc6a0;font-size:13px}
+body[data-screen=team] main .salon-settings button:hover{background:#f2faf2;color:#124622}
+body[data-screen=team] .staff-section-title{font-weight:750;color:#222b33;font-size:15px}
+body[data-screen=team] main .staff-card{border-color:#cbd0d5;box-shadow:var(--av-shadow);padding:21px}
+body[data-screen=team] main .staff-card h2{color:#101418;font-size:22px;font-weight:750}
+body[data-screen=team] main .staff-card p{color:#414952;font-size:13px}
+body[data-screen=team] .staff-status.is-active{background:#d7efd8;color:#14562b}
+body[data-screen=team] .staff-status.is-archived{background:#e4e7eb;color:#404851}
+body[data-screen=team] main .staff-card button{font-size:13px;font-weight:700;border-color:#cbd0d5;background:#f3f4f6;color:#222a31}
+body[data-screen=team] main .staff-card button.primary{background:#d7efd8;color:#14562b;border-color:#9fcba3;box-shadow:none}
+body[data-screen=team] main .staff-card button.primary:hover{background:#bde9c3;color:#124622;border-color:#6cbb70}
+body[data-screen=team] main .staff-card button.staff-danger{color:#9a282c;background:#fcebea;border-color:#e7bdba}
+body[data-screen=team] main .staff-card button.staff-danger:hover{color:#7e1a20;background:#f6d5d3}
+body[data-screen] #action-dialog{border-color:#cbd0d5;background:#fff;box-shadow:0 28px 90px #101a2247}
+body[data-screen] #action-dialog .dialog-top h2{color:#101418;font-weight:750;font-size:27px}
+body[data-screen] #action-dialog .dialog-context{background:#e9f1eb;color:#174b28;font-size:13px;font-weight:600}
+body[data-screen] #action-dialog .entry-form label{color:#232b33;font-size:13px;font-weight:700}
+body[data-screen] #action-dialog .entry-form input,body[data-screen] #action-dialog .entry-form select{background:#f5f6f7;color:#111418;border-color:#b8c0c8;font-size:15px}
+body[data-screen] #action-dialog .entry-form button,body[data-screen] #action-dialog .dialog-choices button,body[data-screen] #action-dialog .closure-row button{background:#f4f5f6;color:#222a31;border-color:#cbd0d5;font-size:14px;font-weight:700}
+body[data-screen] #action-dialog .entry-form button.primary,body[data-screen] #action-dialog .dialog-choices button.primary{background:var(--av-forest);color:#fff;border-color:#075a36}
+body[data-screen] #action-dialog .entry-form button.primary:hover,body[data-screen] #action-dialog .dialog-choices button.primary:hover{background:#064226}
+body[data-screen] #action-dialog .subtle{color:#414952;font-size:13px}
+body[data-screen] #action-dialog .closure-row{background:#f3f4f6;border-color:#cfd4d9}
+body[data-screen] #action-dialog .closure-row strong{color:#111418;font-size:15px}
+body[data-screen] #action-dialog .closure-row small{color:#424b53;font-size:13px}
+body[data-screen] #action-dialog .closure-status.is-closed{background:#f6dcd9;color:#852f2b}
+body[data-screen] #action-dialog .closure-status.is-open{background:#d7efd8;color:#14562b}
+body[data-screen] .holiday-banner{background:#f6dcd9;color:#852f2b;border-color:#d7a09c}
+body[data-screen] #toast{background:#163c29;color:#fff}
+body footer,body[data-screen=team] footer{color:#444d56;border-color:#cfd4d9;font-size:12px}
+body:not([data-screen]) .login-intro{background:var(--av-forest);color:#fff}
+body:not([data-screen]) .login-intro h1,body:not([data-screen]) .login-intro p,body:not([data-screen]) .login-intro .eyebrow{color:#fff}
+body:not([data-screen]) .login-panel h2{color:#111418;font-weight:750}
+body:not([data-screen]) .login-panel p{color:#414952}
+body:not([data-screen]) .login-panel input{border-color:#b8c0c8;background:#f5f6f7;color:#111418}
+body:not([data-screen]) .login-panel .primary{background:var(--av-forest);color:#fff}
+@media(max-width:1150px){body[data-screen] .personal-workspace{grid-template-columns:200px minmax(0,1fr);gap:20px}body[data-screen] .personal-day{min-height:116px;padding:10px 7px}body[data-screen] .personal-day>span:first-child{font-size:12px}body[data-screen] .personal-day strong{font-size:21px}body[data-screen] .personal-day small,body[data-screen] .personal-availability{font-size:11px}}
+@media(max-width:900px){body[data-screen] .personal-workspace{grid-template-columns:1fr;gap:17px}body[data-screen] .personal-sidebar{min-height:0;padding:12px;background:#e6e8eb;border-radius:13px}body[data-screen] .personal-person{min-height:84px;background:#fff;border:1px solid #d1d5da}body[data-screen] .personal-person strong{font-size:13px}}
+@media(max-width:700px){body[data-screen=studio] #root,body[data-screen=team] #root{padding:14px 13px 26px}body[data-screen] #legacy-brand{font-size:30px}body[data-screen] #studio-nav button{font-size:13px}body[data-screen] .workspace-live-tools button{font-size:12px;padding:8px 6px}body[data-screen] .personal-top h1,body[data-screen=team] main .heading h1{font-size:30px}body[data-screen] .personal-section-title h2{font-size:21px}body[data-screen] .personal-section-title>span{font-size:12px}body[data-screen] .personal-day{min-height:104px}body[data-screen] .personal-day strong{font-size:21px}body[data-screen] .personal-day small,body[data-screen] .personal-availability{font-size:11px}body[data-screen] .personal-slot strong{font-size:15px}body[data-screen] .personal-slot small{font-size:11px}body[data-screen] .personal-legend{font-size:11px;gap:9px 12px}body[data-screen] .personal-counters{gap:9px;font-size:12px}body[data-screen] .personal-counters b{font-size:17px}body[data-screen=team] main .staff-card{padding:17px}body[data-screen] #action-dialog .dialog-top h2{font-size:24px}}
+@media(max-width:480px){body[data-screen] .personal-slot{padding:8px 5px}body[data-screen] .personal-slot small{font-size:10px}body[data-screen] .header-right button{font-size:11px}body[data-screen] .personal-day strong{font-size:21px}}
