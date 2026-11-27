@@ -126,6 +126,19 @@ Deno.serve(async(req)=>{
   return ok({confirmed:true,bookingId:inserted},origin);
  }
  const user=await authStaff(req);
+ if(action==="test-book"){
+  // Authorized internal end-to-end pilot. Never accept real customer details.
+  // Use the same online booking RPC, duration, collision and rate-limit checks.
+  if(!["owner","manager"].includes(user.role))return err(403,"forbidden",origin);
+  if(!data||typeof data.staffCode!=="string"||!/^[a-z0-9]{1,20}$/.test(data.staffCode)||typeof data.serviceCode!=="string"||!/^[a-z0-9]{1,20}$/.test(data.serviceCode)||!dateOk(data.day)||!Number.isInteger(data.start))return err(422,"invalid_booking",origin);
+  const hash=await digest("avanti-protected-test-v1|"+user.userId);
+  const inserted=await db("rest/v1/rpc/avanti_create_booking",{method:"POST",body:{
+   p_staff_code:data.staffCode,p_service_code:data.serviceCode,p_day:data.day,p_start_minute:data.start,
+   p_customer_name:"[TEST] Onlinebuchung",p_customer_email:"test@example.invalid",p_customer_phone:null,
+   p_source:"online",p_duration_minutes:null,p_rate_digest:hash
+  }});
+  return ok({confirmed:true,test:true,bookingId:inserted},origin);
+ }
  if(["closure-add","closure-remove","holiday-toggle"].includes(action)){
   if(!["owner","manager"].includes(user.role))return err(403,"forbidden",origin);
   return ok(await db("rest/v1/rpc/avanti_manage_closures",{method:"POST",body:{p_salon:user.salonId,p_action:action,p_data:data}}),origin);
