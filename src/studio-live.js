@@ -67,9 +67,62 @@ async function refreshAuth(){if(Date.now()<expires-60000)return;if(!refresh)thro
  const generation=sessionGeneration;const r=await fetch("https://xvxgqyrykkxdfadppoor.supabase.co/auth/v1/token?grant_type=refresh_token",{method:"POST",headers:{"apikey":KEY,"Content-Type":"application/json"},body:JSON.stringify({refresh_token:refresh}),cache:"no-store"});
  if(!r.ok)throw Error("session_invalid");const data=await r.json();if(generation!==sessionGeneration)throw Error("session_invalid");token=data.access_token;refresh=data.refresh_token;expires=Date.now()+Number(data.expires_in||3000)*1000;
 }
+const AUTH_BASE="https://xvxgqyrykkxdfadppoor.supabase.co/auth/v1";
+const RECOVERY_REDIRECT="https://studio.haarstudio-avanti.de/";
+async function recoveryRequest(path,{method="POST",body,session}={}){
+ const headers={apikey:KEY,"Content-Type":"application/json"};if(session)headers.Authorization="Bearer "+session;
+ const res=await fetch(AUTH_BASE+path,{method,headers,body:body===undefined?undefined:JSON.stringify(body),cache:"no-store",signal:AbortSignal.timeout(15000)});
+ let data={};try{data=await res.json()}catch{}
+ if(!res.ok){const e=Error("auth_request_failed");e.status=res.status;e.code=data.error_code||data.code||"";throw e;}return data;
+}
+function recoveryShell(title,copy,form){
+ root.innerHTML='<div class="login-shell recovery-shell"><div class="login-intro"><div><span class="eyebrow">AVANTI / STUDIO MANAGER</span><h1>Dein Zugang.<br>Sicher geschützt.</h1></div><p>Nur freigegebene Salonkonten erhalten Zugang zum gemeinsamen Kalender.</p></div><div class="login-panel"><span class="eyebrow">KONTOSICHERHEIT</span><h2>'+esc(title)+'</h2><p>'+esc(copy)+'</p>'+form+'<button type="button" class="recovery-back" id="recovery-back">Zurück zur Anmeldung</button></div></div>';
+ root.querySelector("#recovery-back").onclick=()=>login();
+}
+function forgotPassword(email=""){
+ recoveryShell("Passwort vergessen?","Gib die E-Mail-Adresse deines Salonkontos ein. Du erhältst einen Link, um ein neues Passwort festzulegen.",'<form id="recovery-form"><label>E-Mail-Adresse<input type="email" name="email" autocomplete="email" required value="'+esc(email)+'"></label><button class="primary" type="submit">Reset-Link anfordern</button><p class="recovery-feedback" role="status" aria-live="polite"></p></form>');
+ const form=root.querySelector("#recovery-form"),button=form.querySelector("button"),feedback=form.querySelector(".recovery-feedback");
+ form.onsubmit=async e=>{e.preventDefault();if(button.disabled)return;button.disabled=true;feedback.className="recovery-feedback";feedback.textContent="Anfrage wird gesendet …";
+ try{
+  await recoveryRequest("/recover?redirect_to="+encodeURIComponent(RECOVERY_REDIRECT),{body:{email:form.elements.email.value.trim()}});
+  feedback.classList.add("success");feedback.textContent="Wenn für diese Adresse ein Konto besteht, wurde ein Reset-Link angefordert. Bitte prüfe dein Postfach und den Spamordner.";
+  button.textContent="Erneut anfordern";
+ }catch(err){feedback.classList.add("error");feedback.textContent=err.status===429?"Zu viele Anfragen. Bitte warte einige Minuten.":"Der Reset-Link konnte nicht angefordert werden. Bitte versuche es später oder wende dich an die Salonleitung.";}finally{button.disabled=false;}
+ };
+}
+function recoveryPassword(recoveryToken){
+ recoveryShell("Neues Passwort","Wähle ein starkes Passwort mit mindestens 12 Zeichen.",'<form id="new-password-form"><label>Neues Passwort<input type="password" name="password" autocomplete="new-password" minlength="12" maxlength="128" required></label><label>Passwort wiederholen<input type="password" name="repeat" autocomplete="new-password" minlength="12" maxlength="128" required></label><button type="submit" class="primary">Neues Passwort speichern</button><p class="recovery-feedback" role="status" aria-live="polite"></p></form>');
+ const form=root.querySelector("#new-password-form"),button=form.querySelector("button"),feedback=form.querySelector(".recovery-feedback");
+ root.querySelector("#recovery-back").onclick=()=>{recoveryToken="";login();};
+ form.onsubmit=async e=>{e.preventDefault();if(button.disabled||!recoveryToken)return;feedback.className="recovery-feedback";
+ const password=form.elements.password.value;if(password.length<12||password!==form.elements.repeat.value){feedback.classList.add("error");feedback.textContent="Bitte mindestens 12 Zeichen eingeben und beide Passwörter identisch wiederholen.";return;}
+ button.disabled=true;feedback.textContent="Passwort wird gespeichert …";
+ try{
+  await recoveryRequest("/user",{method:"PUT",session:recoveryToken,body:{password}});
+  const old=recoveryToken;recoveryToken="";form.reset();
+  try{await recoveryRequest("/logout?scope=global",{session:old});}catch{}
+  recoveryShell("Passwort geändert.","Dein neues Passwort wurde gespeichert. Melde dich jetzt mit dem neuen Passwort an.",'<div class="recovery-feedback success" role="status">Passwort erfolgreich geändert.</div>');
+  root.querySelector("#recovery-back").textContent="Jetzt anmelden";
+ }catch(err){feedback.classList.add("error");feedback.textContent=err.status===401||err.code==="session_not_found"||err.code==="jwt_expired"?"Dieser Link ist abgelaufen oder ungültig. Bitte fordere einen neuen Reset-Link an.":err.code==="same_password"?"Das neue Passwort muss sich vom bisherigen unterscheiden.":err.code==="weak_password"?"Das Passwort erfüllt die Sicherheitsanforderungen nicht. Bitte wähle ein stärkeres.":"Passwort konnte nicht gespeichert werden. Bitte prüfe den Link oder fordere einen neuen an.";}finally{button.disabled=false;}
+ };
+}
+function startRecovery(){
+ const hash=new URLSearchParams(location.hash.slice(1)),query=new URLSearchParams(location.search);
+ const isRecovery=hash.get("type")==="recovery",access=hash.get("access_token");
+ const hasError=hash.has("error")||hash.has("error_code")||query.has("error_code");
+ if(!isRecovery&&!hasError)return false;
+ // Never retain recovery credentials in the URL, browser storage, logs or normal app session.
+ history.replaceState(null,"",location.pathname);
+ login();
+ if(isRecovery&&access&&!hasError){recoveryPassword(access);return true;}
+ recoveryShell("Reset-Link ungültig","Dieser Link ist abgelaufen oder konnte nicht verwendet werden. Fordere bitte einen neuen an.",'<button type="button" class="primary" id="recovery-retry">Neuen Reset-Link anfordern</button>');
+ root.querySelector("#recovery-retry").onclick=()=>forgotPassword();
+ return true;
+}
 function login(){
  document.body.removeAttribute("data-screen");document.getElementById("legacy-style").media="not all";document.getElementById("studio-nav").hidden=true;document.getElementById("legacy-brand").hidden=true;document.getElementById("login-brand").hidden=false;weekData={};teamProfiles=[];state={staff:[],appointments:[],absences:[],services:[]};teamPage=false;viewMode="day";teamView=false;sessionGeneration++;token="";refresh="";expires=0;snapshot=null;lastLoadedDay=null;loadError="";filterInitialized=false;staffFilter="all";clearInterval(poll);logout.hidden=true;account.textContent="";
- root.innerHTML='<div class="login-shell"><div class="login-intro"><div><span class="eyebrow">AVANTI / STUDIO MANAGER</span><h1>Dein Salon.<br>Dein Kalender.</h1></div><p>Alle Termine an einem Ort. Eintragen, sperren und freie Zeiten sofort über den gemeinsamen Server abgleichen.</p></div><div class="login-panel"><span class="eyebrow">GESCHÜTZTER MITARBEITERZUGANG</span><h2>Willkommen zurück.</h2><p>Melde dich mit deinem von der Salonleitung freigegebenen Konto an. Es werden keine Testpasswörter angelegt.</p><form id="login-form"><label>E-Mail-Adresse<input name="email" type="email" autocomplete="username" required></label><label>Passwort<input name="password" type="password" autocomplete="current-password" required></label><button class="primary">Verbinden & Kalender öffnen</button><div id="login-error" class="status-text" role="alert"></div></form><p class="subtle">Der Salonzugang wird einmalig von der Salonleitung eingerichtet. Keine öffentliche Registrierung.</p></div></div>';
+ root.innerHTML='<div class="login-shell"><div class="login-intro"><div><span class="eyebrow">AVANTI / STUDIO MANAGER</span><h1>Dein Salon.<br>Dein Kalender.</h1></div><p>Alle Termine an einem Ort. Eintragen, sperren und freie Zeiten sofort über den gemeinsamen Server abgleichen.</p></div><div class="login-panel"><span class="eyebrow">GESCHÜTZTER MITARBEITERZUGANG</span><h2>Willkommen zurück.</h2><p>Melde dich mit deinem von der Salonleitung freigegebenen Konto an. Es werden keine Testpasswörter angelegt.</p><form id="login-form"><label>E-Mail-Adresse<input name="email" type="email" autocomplete="username" required></label><label>Passwort<input name="password" type="password" autocomplete="current-password" required></label><button class="primary">Verbinden & Kalender öffnen</button><button type="button" class="recovery-link" id="forgot-password">Passwort vergessen?</button><div id="login-error" class="status-text" role="alert"></div></form><p class="subtle">Der Salonzugang wird einmalig von der Salonleitung eingerichtet. Keine öffentliche Registrierung.</p></div></div>';
+ root.querySelector("#forgot-password").onclick=()=>forgotPassword(root.querySelector("#login-form").elements.email.value);
  root.querySelector("#login-form").addEventListener("submit",async e=>{e.preventDefault();const f=e.currentTarget,b=f.querySelector("button"),status=f.querySelector("#login-error");b.disabled=true;status.textContent="";try{await authenticate(f.elements.email.value,f.elements.password.value);await load();poll=setInterval(()=>{if(token&&!dialog.open&&!document.hidden)load(true)},25000)}catch(err){status.textContent=errorLabel(err);token="";refresh="";expires=0}finally{b.disabled=false}});
 }
 async function load(silent=false){
@@ -291,5 +344,5 @@ function shiftsDialog(person){
 }
 
 logout.onclick=async()=>{const old=token;login();toast("Abgemeldet.");if(old)try{await fetch("https://xvxgqyrykkxdfadppoor.supabase.co/auth/v1/logout?scope=local",{method:"POST",headers:{apikey:KEY,Authorization:"Bearer "+old},cache:"no-store"});}catch{}};document.addEventListener("visibilitychange",()=>{if(!document.hidden&&token&&!dialog.open)load(true)});
-login();
+if(!startRecovery())login();
 })();

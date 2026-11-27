@@ -93,3 +93,6 @@ Separate Abwesenheitsansicht aus Navigation entfernt; vorhandene Zeitsperren ble
 - Vorhandene lokale Termine und Mitarbeiterprofile bleiben beim Katalog-Upgrade erhalten; keine produktiven Kontaktdaten eingeben.
 - Die mobile Slot-Auswahl wurde nicht durch eine Supabase-Anbindung ersetzt. Kalender, Buchungen, Teamverwaltung und Website bleiben noch voneinander getrennte Testoberflächen.
 - Zusätzliche Modelltests: Katalogkonsistenz, Upgrade ohne Verlust bestehender Termine und vollständige Blockierung der Behandlungsdauer.
+
+## Passwort zurücksetzen (Produktivzugang)
+Der Login bietet eine Supabase Auth Recovery-Anfrage an. In Supabase Authentication → URL Configuration muss `https://studio.haarstudio-avanti.de/` als Site URL oder Redirect URL zugelassen sein. Die Recovery-Mail muss den Supabase ConfirmationURL-Link verwenden (Standard-Recovery-Template); SMTP/Absender und Zustellung sind vor Übergabe zu prüfen. Der Client verwendet nur den Publishable Key, nimmt den Recovery-Token aus dem URL-Fragment, entfernt ihn sofort aus der Adresszeile und speichert ihn nicht dauerhaft. Nach erfolgreichem Passwortwechsel meldet sich der Nutzer erneut an. Keine öffentliche Registrierung.
